@@ -10,6 +10,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo-google-fonts/spectral": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@rootnative/components": "0.0.0-alpha.9",
     "@rootnative/core": "0.0.0-alpha.9",
