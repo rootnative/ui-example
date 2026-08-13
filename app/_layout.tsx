@@ -1,10 +1,12 @@
 import { useTheme } from '@rootnative/core'
+import { MotionConfig } from '@rootnative/inertia'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { View } from 'react-native'
 import { FONTS } from '../src/theme/fonts'
 import { ThemeModeProvider, useThemeMode } from '../src/theme/mode'
+import { TRANSITIONS } from '../src/theme/motion'
 import { CONTOUR } from '../src/theme/survey'
 
 // Reads the active theme, so it must sit below ThemeModeProvider.
@@ -37,7 +39,9 @@ export default function RootLayout() {
 
   return (
     <ThemeModeProvider>
-      <ThemedStack />
+      <MotionConfig transitions={TRANSITIONS}>
+        <ThemedStack />
+      </MotionConfig>
     </ThemeModeProvider>
   )
 }

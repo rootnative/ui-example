@@ -35,6 +35,11 @@ export function Sheet({ children }: { children: ReactNode }) {
       {size.width > 0 ? (
         // Ink on paper reads at a lower opacity than lamplight on slate: the
         // night accent is brighter, so the same value would shout.
+        //
+        // Deliberately not keyed on `size` or on the palette. The rings draw
+        // themselves once, on the first mount that has a measured width; a
+        // re-key would replay the whole 1.6s draw every time the content height
+        // changed or the user hit the theme toggle.
         <ContourField
           width={size.width}
           height={size.height}
