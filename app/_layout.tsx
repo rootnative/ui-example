@@ -1,18 +1,18 @@
-import { useTheme } from '@rootnative/core'
+import { useTheme, useThemeMode } from '@rootnative/core'
 import { MotionConfig } from '@rootnative/inertia'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { View } from 'react-native'
 import { FONTS } from '../src/theme/fonts'
-import { ThemeModeProvider, useThemeMode } from '../src/theme/mode'
+import { ThemeModeProvider } from '../src/theme/mode'
 import { TRANSITIONS } from '../src/theme/motion'
 import { CONTOUR } from '../src/theme/survey'
 
 // Reads the active theme, so it must sit below ThemeModeProvider.
 function ThemedStack() {
   const theme = useTheme()
-  const { dark } = useThemeMode()
+  const { scheme } = useThemeMode()
 
   return (
     <>
@@ -23,7 +23,7 @@ function ThemedStack() {
         }}
       />
       {/* Dark ground needs light status-bar glyphs, and the reverse. */}
-      <StatusBar style={dark ? 'light' : 'dark'} />
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>
   )
 }

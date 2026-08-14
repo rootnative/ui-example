@@ -1,9 +1,8 @@
-import { useTheme } from '@rootnative/core'
+import { useTheme, useThemeMode } from '@rootnative/core'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { LayoutChangeEvent } from 'react-native'
 import { View } from 'react-native'
-import { useThemeMode } from '../theme/mode'
 import { ContourField } from './ContourField'
 
 /**
@@ -15,7 +14,7 @@ import { ContourField } from './ContourField'
  */
 export function Sheet({ children }: { children: ReactNode }) {
   const theme = useTheme()
-  const { dark } = useThemeMode()
+  const { scheme } = useThemeMode()
   const [size, setSize] = useState({ width: 0, height: 0 })
 
   function handleLayout(event: LayoutChangeEvent) {
@@ -43,7 +42,7 @@ export function Sheet({ children }: { children: ReactNode }) {
         <ContourField
           width={size.width}
           height={size.height}
-          opacity={dark ? 0.14 : 0.2}
+          opacity={scheme === 'dark' ? 0.14 : 0.2}
         />
       ) : null}
       {children}

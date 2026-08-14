@@ -30,9 +30,6 @@
       "output": "static",
       "favicon": "./assets/favicon.png"
     },
-    "experiments": {
-      "baseUrl": "/ui-example"
-    },
     "extra": {
       "router": {}
     }

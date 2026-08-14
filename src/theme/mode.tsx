@@ -1,54 +1,28 @@
-import { ThemeProvider } from '@rootnative/core'
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
-import { useColorScheme } from 'react-native'
+import { ThemeProvider, useThemeMode } from '@rootnative/core'
+import type { ReactNode } from 'react'
 import { CONTOUR, surveyDark, surveyLight } from './survey'
 
-interface ThemeMode {
-  dark: boolean
-  toggle: () => void
-  /** SVG ramp matching the active palette — contours, hairlines, water. */
-  contour: (typeof CONTOUR)['light']
-}
-
-const ThemeModeContext = createContext<ThemeMode | null>(null)
-
 /**
- * Swaps the two Survey palettes at runtime.
+ * Hands both Survey palettes to the library and lets it own the mode.
  *
- * The whole swap is one prop on ThemeProvider. Every component re-themes with
- * no per-component work, which is the point the example is making.
+ * The whole swap is one prop. Every component re-themes with no per-component
+ * work, which is the point the example is making.
  */
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
-  const systemScheme = useColorScheme()
-  const [dark, setDark] = useState(systemScheme === 'dark')
-
-  const toggle = useCallback(() => setDark((current) => !current), [])
-
-  const value = useMemo(
-    () => ({ dark, toggle, contour: dark ? CONTOUR.dark : CONTOUR.light }),
-    [dark, toggle],
-  )
-
   return (
-    <ThemeModeContext.Provider value={value}>
-      <ThemeProvider theme={dark ? surveyDark : surveyLight}>
-        {children}
-      </ThemeProvider>
-    </ThemeModeContext.Provider>
+    <ThemeProvider theme={{ light: surveyLight, dark: surveyDark }}>
+      {children}
+    </ThemeProvider>
   )
 }
 
-export function useThemeMode() {
-  const mode = useContext(ThemeModeContext)
-  if (!mode) {
-    throw new Error('useThemeMode must be used inside a ThemeModeProvider')
-  }
-  return mode
+/**
+ * The SVG ramp matching the active palette — contours, hairlines, water.
+ *
+ * These colours are drawn straight onto SVG elements rather than read off a
+ * component, so they live outside the theme and follow `scheme` by hand.
+ */
+export function useContour() {
+  const { scheme } = useThemeMode()
+  return CONTOUR[scheme]
 }

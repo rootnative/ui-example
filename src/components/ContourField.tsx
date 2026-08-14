@@ -1,7 +1,7 @@
 import { createMotionSvgComponent } from '@rootnative/inertia-svg'
 import { StyleSheet, View } from 'react-native'
 import Svg, { Ellipse, G } from 'react-native-svg'
-import { useThemeMode } from '../theme/mode'
+import { useContour } from '../theme/mode'
 import { ringDelay } from '../theme/motion'
 
 /**
@@ -77,7 +77,7 @@ export function ContourField({
   height,
   opacity = 1,
 }: ContourFieldProps) {
-  const { contour } = useThemeMode()
+  const contour = useContour()
 
   return (
     <View
