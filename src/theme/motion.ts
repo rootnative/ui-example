@@ -23,22 +23,22 @@ import type { TransitionConfig } from '@rootnative/inertia'
  * A plate settling onto the desk. Heavier mass and high friction than a
  * Material default, so it arrives and stops rather than wobbling.
  */
-const plate: TransitionConfig = {
+export const plate = {
   type: 'spring',
   tension: 180,
   friction: 26,
   mass: 1.4,
-}
+} satisfies TransitionConfig
 
 /**
  * A pen stroke. Constant-speed easing with a slight ease-out at the end of the
  * line, which is how a nib lifts. Long enough to read as drawing, not wiping.
  */
-const ink: TransitionConfig = {
+export const ink = {
   type: 'timing',
   duration: 900,
   easing: cubicBezier(0.22, 1, 0.36, 1),
-}
+} satisfies TransitionConfig
 
 /** A sheet sliding across the desk, or folding away. */
 const fold: TransitionConfig = {
@@ -73,6 +73,26 @@ declare module '@rootnative/inertia' {
 }
 
 /* ------------------------------------------------------------------ staging */
+
+/**
+ * A named transition, plus a delay.
+ *
+ * `transition` takes a `TransitionConfig` **or** a registered name, never a name
+ * with overrides — so a staggered call site cannot write `transition="plate"`
+ * and add its own delay. It has to pass a config. Passing the exported token
+ * through this helper keeps that config the same object the registry holds,
+ * instead of a second spring written out by hand that then drifts from it.
+ *
+ * `no-animation` is excluded because it carries no `delay` — postponing the
+ * absence of an animation has no meaning, and the type says so.
+ */
+type DelayableTransition = Exclude<TransitionConfig, { type: 'no-animation' }>
+export function withDelay<T extends DelayableTransition>(
+  transition: T,
+  delay: number,
+): T {
+  return { ...transition, delay }
+}
 
 /**
  * Delay before plate `index` lands, in milliseconds.

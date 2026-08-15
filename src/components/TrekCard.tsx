@@ -3,7 +3,7 @@ import { useTheme } from '@rootnative/core'
 import { Motion } from '@rootnative/inertia'
 import type { EnrichedTrek } from '../data/types'
 import { elevationGain, gradient } from '../data/types'
-import { plateDelay } from '../theme/motion'
+import { plate, plateDelay, withDelay } from '../theme/motion'
 
 /**
  * One trek, as a plate pasted onto the sheet.
@@ -36,6 +36,10 @@ export function TrekCard({ trek, index, onPress }: TrekCardProps) {
   // a fort is a cultural one and stays roman.
   const isSummit = trek.features.includes('summit')
 
+  // Undefined until the Wikipedia fetch settles, and stays undefined when it
+  // fails — the card is complete without it.
+  const photo = trek.enrichment?.imageUrl
+
   return (
     <Motion.Pressable
       onPress={onPress}
@@ -45,7 +49,7 @@ export function TrekCard({ trek, index, onPress }: TrekCardProps) {
       animate={{ opacity: 1, translateY: 0 }}
       transition={{
         opacity: { type: 'timing', duration: 280, delay: plateDelay(index) },
-        translateY: { ...PLATE_IN, delay: plateDelay(index) },
+        translateY: withDelay(plate, plateDelay(index)),
       }}
       // The plate sinks under the finger. `pressed` owns its own 0↔1 progress,
       // so releasing fades the layer out without disturbing anything else.
@@ -63,8 +67,32 @@ export function TrekCard({ trek, index, onPress }: TrekCardProps) {
           borderColor: theme.colors.outline,
         }}
       >
+        {photo ? (
+          <Card.Media height={160}>
+            {/*
+              The photo arrives well after the plate lands, so it fades in on
+              its own rather than appearing hard. `layoutId` pairs it with the
+              detail hero: touching the plate FLIPs this exact image into the
+              next screen.
+            */}
+            <Motion.Image
+              layoutId={`trek-photo-${trek.id}`}
+              source={{ uri: photo }}
+              resizeMode="cover"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition="fold"
+              style={{ width: '100%', height: '100%' }}
+              accessibilityIgnoresInvertColors
+            />
+          </Card.Media>
+        ) : null}
+
         <Card.Content>
-          <Typography variant="labelSmall" color={theme.colors.onSurfaceVariant}>
+          <Typography
+            variant="labelSmall"
+            color={theme.colors.onSurfaceVariant}
+          >
             {trek.sheet.toUpperCase()} · {trek.district.toUpperCase()}
           </Typography>
 
@@ -91,12 +119,6 @@ export function TrekCard({ trek, index, onPress }: TrekCardProps) {
     </Motion.Pressable>
   )
 }
-
-/**
- * Spring for the settle. Written out rather than named, because each plate
- * needs its own `delay` on top of the shared curve.
- */
-const PLATE_IN = { type: 'spring', tension: 180, friction: 26, mass: 1.4 } as const
 
 /** One column of the mono grid-data row. */
 function Stat({ label, value }: { label: string; value: string }) {

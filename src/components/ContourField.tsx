@@ -2,7 +2,7 @@ import { createMotionSvgComponent } from '@rootnative/inertia-svg'
 import { StyleSheet, View } from 'react-native'
 import Svg, { Ellipse, G } from 'react-native-svg'
 import { useContour } from '../theme/mode'
-import { ringDelay } from '../theme/motion'
+import { ink, ringDelay, withDelay } from '../theme/motion'
 
 /**
  * The contour texture that makes a surface read as a map sheet rather than a
@@ -81,8 +81,9 @@ export function ContourField({
 
   return (
     <View
-      style={[StyleSheet.absoluteFill, { opacity }]}
-      pointerEvents="none"
+      // `pointerEvents` belongs in `style` — the prop form is deprecated in
+      // React Native 0.81 and warns on every render.
+      style={[StyleSheet.absoluteFill, { opacity, pointerEvents: 'none' }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
@@ -119,11 +120,10 @@ export function ContourField({
                     strokeDashoffset={length}
                     animate={{ strokeDashoffset: 0 }}
                     transition={{
-                      strokeDashoffset: {
-                        type: 'timing',
-                        duration: 900,
-                        delay: ringDelay(ringIndex, peak.rings),
-                      },
+                      strokeDashoffset: withDelay(
+                        ink,
+                        ringDelay(ringIndex, peak.rings),
+                      ),
                     }}
                   />
                 )
