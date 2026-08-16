@@ -45,8 +45,20 @@ const lightColors: Theme['colors'] = {
 
   secondary: water,
   onSecondary: paperHigh,
-  secondaryContainer: '#C5D3D9',
-  onSecondaryContainer: '#22333B',
+  // Not a tint of `secondary`, on purpose. The container pair is what a
+  // selected `Chip variant="filter"` fills with, and on a survey sheet blue is
+  // reserved for water — a selected GRADE chip rendered in river blue reads as
+  // a different map feature, not as a marked legend entry. A marked entry takes
+  // the sheet's own accent, so this is a sepia wash with the ink the annotation
+  // is written in.
+  //
+  // The wash is deliberately deeper than `sepiaPale`. A selected filter chip
+  // drops its border to nothing, so the fill is the only thing carrying the
+  // state: `sepiaPale` on paper is 1.39:1 and reads as unmarked once the
+  // hairline goes. This sits at 2.04:1 against the sheet while still holding
+  // 5.45:1 for the label — the deepest wash that keeps the text above 4.5.
+  secondaryContainer: '#C09A78',
+  onSecondaryContainer: '#4A1F0B',
 
   tertiary: '#5E6B3A', // vegetation green
   onTertiary: paperHigh,
@@ -112,8 +124,13 @@ const darkColors: Theme['colors'] = {
 
   secondary: '#8FADB9', // moonlit water
   onSecondary: '#16262D',
-  secondaryContainer: '#2F444D',
-  onSecondaryContainer: '#CDE0E8',
+  // Same reasoning as the light sheet: the container pair marks a selected
+  // legend entry, so it takes the head-torch amber rather than moonlit water,
+  // and it is deepened past `primaryContainer` for the same reason — a selected
+  // chip has no border, so the fill alone must carry the state. 2.29:1 against
+  // the slate, 5.39:1 for the label.
+  secondaryContainer: '#7D461C',
+  onSecondaryContainer: '#F6D3B4',
 
   tertiary: '#9DAA76', // vegetation, desaturated at night
   onTertiary: '#1F2610',

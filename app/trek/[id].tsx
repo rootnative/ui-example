@@ -4,6 +4,7 @@ import {
   Divider,
   Layout,
   Row,
+  Skeleton,
   Typography,
 } from '@rootnative/components'
 import { useTheme } from '@rootnative/core'
@@ -71,8 +72,10 @@ export default function TrekDetailScreen() {
   const { lat, lon, extract } = trek.enrichment ?? {}
 
   return (
+    // Both insets — the page scrolls, so the last paragraph would otherwise
+    // end under the home indicator. See the gallery for the same note.
     <Layout
-      edges={['top']}
+      edges={['top', 'bottom']}
       style={{ backgroundColor: theme.colors.surface, flex: 1 }}
     >
       <AppBar title={trek.name} canGoBack onBackPress={router.back} />
@@ -98,6 +101,12 @@ export default function TrekDetailScreen() {
           </View>
         ) : null}
 
+        {/*
+          The hero holds its 240pt box while the fetch is in flight, so the
+          stat block below does not jump down when the photo lands. One
+          skeleton on the page, so the pulse is left on here — unlike the
+          gallery, where six would compete.
+        */}
         {photo ? (
           <Motion.Image
             layoutId={`trek-photo-${trek.id}`}
@@ -111,6 +120,8 @@ export default function TrekDetailScreen() {
             }}
             accessibilityIgnoresInvertColors
           />
+        ) : loading ? (
+          <Skeleton width="100%" height={240} shape="rectangle" />
         ) : null}
 
         <Column gap="xs">

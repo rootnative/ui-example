@@ -95,15 +95,12 @@ export function withDelay<T extends DelayableTransition>(
 }
 
 /**
- * Delay before plate `index` lands, in milliseconds.
- *
- * Capped on purpose: past the cap every later card shares one delay, so a long
- * list still finishes settling at a predictable moment instead of dealing
- * itself out for several seconds.
+ * The plate cascade is no longer computed here. `<Stagger interval={70}>` in
+ * the gallery owns it: the parent assigns each child `position * interval`, so
+ * a filtered or reordered list re-derives its delays instead of reading a
+ * stale `index` prop. `withDelay` stays for the contour rings below, which
+ * stagger by ring rather than by list position.
  */
-export function plateDelay(index: number) {
-  return Math.min(index, 6) * 70
-}
 
 /**
  * Delay before contour ring `index` of `total` starts drawing.
