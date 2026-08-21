@@ -23,12 +23,15 @@ export function SheetBackdrop({
   const { scheme } = useThemeMode()
 
   // Ink on paper reads at a lower opacity than lamplight on slate: the night
-  // accent is brighter, so the same value would shout.
+  // accent is brighter, so the same value would shout. `ContourField` animates
+  // this value rather than setting it, so the density crosses over with the ink
+  // colour instead of stepping while the colour fades.
   //
   // Deliberately not keyed on the size or the palette. The rings draw
   // themselves once, on the first mount that has a measured width; a re-key
   // would replay the whole 1.6s draw every time the content height changed or
-  // the user hit the theme toggle.
+  // the user hit the theme toggle — which is exactly what animating the two
+  // values in place avoids.
   return (
     <ContourField
       width={width}

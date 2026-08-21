@@ -57,10 +57,27 @@ const press: TransitionConfig = {
   friction: 30,
 }
 
-export const TRANSITIONS = { plate, ink, fold, press }
+/**
+ * The lamp coming on, or the sheet carried back into daylight.
+ *
+ * Timing, not a spring, and the one token slower than `ink`. Nothing here
+ * moves — it is the sheet changing colour under a different light, and light
+ * does not overshoot. A spring would put a wobble on a value that only ever
+ * crosses between two colours, and a fast fade reads as a cut.
+ *
+ * It is deliberately longer than the toggle's own `press` feedback, so the
+ * button answers the finger at once while the sheet takes its time behind it.
+ */
+const lamp = {
+  type: 'timing',
+  duration: 520,
+  easing: cubicBezier(0.4, 0, 0.2, 1),
+} satisfies TransitionConfig
+
+export const TRANSITIONS = { plate, ink, fold, press, lamp }
 
 /**
- * Narrows `transition="…"` to the four names above, so a typo is a compile
+ * Narrows `transition="…"` to the five names above, so a typo is a compile
  * error instead of a dev-time warning and a silent fallback spring.
  */
 declare module '@rootnative/inertia' {
@@ -69,6 +86,7 @@ declare module '@rootnative/inertia' {
     ink: true
     fold: true
     press: true
+    lamp: true
   }
 }
 

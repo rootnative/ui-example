@@ -1,11 +1,5 @@
-import {
-  AppBar,
-  Column,
-  IconButton,
-  Layout,
-  Typography,
-} from '@rootnative/components'
-import { useTheme, useThemeMode } from '@rootnative/core'
+import { AppBar, Column, Layout, Typography } from '@rootnative/components'
+import { useTheme } from '@rootnative/core'
 import { Motion, Presence, Stagger, useScroll } from '@rootnative/inertia'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
@@ -16,6 +10,7 @@ import {
   NO_FILTER,
   type TrekFilter,
 } from '../src/components/FilterBar'
+import { LampToggle } from '../src/components/LampToggle'
 import { SheetBackdrop } from '../src/components/Sheet'
 import { useSheetContentStyle } from '../src/components/sheetLayout'
 import { TrekCard } from '../src/components/TrekCard'
@@ -45,12 +40,10 @@ import { useTreks } from '../src/data/useTreks'
 export default function GalleryScreen() {
   const theme = useTheme()
   const { treks, loading } = useTreks()
-  const { scheme, setMode } = useThemeMode()
   const { scrollY, onScroll } = useScroll()
   const contentStyle = useSheetContentStyle(24)
   const [content, setContent] = useState({ width: 0, height: 0 })
   const [filter, setFilter] = useState<TrekFilter>(NO_FILTER)
-  const dark = scheme === 'dark'
 
   const visible = useMemo(() => applyFilter(treks, filter), [treks, filter])
 
@@ -78,18 +71,10 @@ export default function GalleryScreen() {
         variant="large"
         title="Sahyadri Range"
         scrollOffset={scrollY}
-        // `trailing` rather than `actions`: the toggle needs its own icon
-        // state, and the two props are mutually exclusive by type.
-        trailing={
-          <IconButton
-            icon={dark ? 'weather-night' : 'white-balance-sunny'}
-            variant="outlined"
-            accessibilityLabel={
-              dark ? 'Switch to the day sheet' : 'Switch to the night sheet'
-            }
-            onPress={() => setMode(dark ? 'light' : 'dark')}
-          />
-        }
+        // `trailing` rather than `actions`: the toggle owns its own motion and
+        // renders two stacked faces, where `actions` builds only icon and text
+        // buttons. The two props are mutually exclusive by type anyway.
+        trailing={<LampToggle />}
       />
 
       <Motion.ScrollView
