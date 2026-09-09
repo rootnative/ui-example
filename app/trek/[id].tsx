@@ -13,7 +13,10 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { View } from 'react-native'
 import { SheetBackdrop } from '../../src/components/Sheet'
-import { useSheetContentStyle } from '../../src/components/sheetLayout'
+import {
+  useSheetContentStyle,
+  useSheetHeaderStyle,
+} from '../../src/components/sheetLayout'
 import { elevationGain, gradient } from '../../src/data/types'
 import { useTrek } from '../../src/data/useTreks'
 
@@ -35,6 +38,9 @@ export default function TrekDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { trek, loading } = useTrek(id)
   const contentStyle = useSheetContentStyle(20)
+  // The bar sits outside the scroller, so it needs the column stated on it —
+  // see the gallery, and `useSheetHeaderStyle` for why.
+  const headerStyle = useSheetHeaderStyle()
   const [content, setContent] = useState({ width: 0, height: 0 })
 
   // Reports the scrollable size rather than the visible box, so the texture
@@ -55,8 +61,18 @@ export default function TrekDetailScreen() {
         edges={['top']}
         style={{ backgroundColor: theme.colors.surface, flex: 1 }}
       >
-        <AppBar title="Off the sheet" canGoBack onBackPress={router.back} />
-        <Column p="lg">
+        <AppBar
+          title="Off the sheet"
+          canGoBack
+          onBackPress={router.back}
+          style={headerStyle}
+        />
+        {/*
+          The same column as the page it replaces. `p="lg"` put this line on a
+          different margin from every other screen, which reads as a broken
+          page rather than an empty one.
+        */}
+        <Column style={contentStyle}>
           <Typography
             variant="bodyMedium"
             color={theme.colors.onSurfaceVariant}
@@ -78,7 +94,12 @@ export default function TrekDetailScreen() {
       edges={['top', 'bottom']}
       style={{ backgroundColor: theme.colors.surface, flex: 1 }}
     >
-      <AppBar title={trek.name} canGoBack onBackPress={router.back} />
+      <AppBar
+        title={trek.name}
+        canGoBack
+        onBackPress={router.back}
+        style={headerStyle}
+      />
 
       <Motion.ScrollView
         style={{ flex: 1, backgroundColor: theme.colors.surface }}

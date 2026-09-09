@@ -12,7 +12,10 @@ import {
 } from '../src/components/FilterBar'
 import { LampToggle } from '../src/components/LampToggle'
 import { SheetBackdrop } from '../src/components/Sheet'
-import { useSheetContentStyle } from '../src/components/sheetLayout'
+import {
+  useSheetContentStyle,
+  useSheetHeaderStyle,
+} from '../src/components/sheetLayout'
 import { TrekCard } from '../src/components/TrekCard'
 import { useTreks } from '../src/data/useTreks'
 
@@ -42,6 +45,7 @@ export default function GalleryScreen() {
   const { treks, loading } = useTreks()
   const { scrollY, onScroll } = useScroll()
   const contentStyle = useSheetContentStyle(24)
+  const headerStyle = useSheetHeaderStyle()
   const [content, setContent] = useState({ width: 0, height: 0 })
   const [filter, setFilter] = useState<TrekFilter>(NO_FILTER)
 
@@ -71,6 +75,11 @@ export default function GalleryScreen() {
         variant="large"
         title="Sahyadri Range"
         scrollOffset={scrollY}
+        // The bar is a sibling of the scroller, so `contentContainerStyle`
+        // never reaches it. Without this it spanned the whole window while the
+        // plates sat in a 720px column, which put the title and the toggle a
+        // thousand pixels off the sheet on a desktop display.
+        style={headerStyle}
         // `trailing` rather than `actions`: the toggle owns its own motion and
         // renders two stacked faces, where `actions` builds only icon and text
         // buttons. The two props are mutually exclusive by type anyway.

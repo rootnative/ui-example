@@ -27,7 +27,7 @@ Then press `i` for iOS, `a` for Android, or `w` for web. To open the app on a ph
 
 ## What's included
 
-- Expo SDK 54 with Expo Router
+- Expo SDK 57 with Expo Router
 - `@rootnative/core` — theme system with Material Design 3 tokens
 - `@rootnative/components` — UI components (Button, Card, Typography, and more)
 - `@rootnative/inertia` — the animation layer

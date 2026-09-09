@@ -52,15 +52,23 @@ export function LampToggle() {
       {/*
         The night face is decoration, and is marked as such. It is a second
         rendering of the same control, so leaving it in the accessibility tree
-        would announce the toggle twice and offer a second, unlabelled target.
-        `pointerEvents: 'none'` is what lets the press fall through to the day
-        face above it, which owns the real handler.
+        would announce the toggle twice and offer a second target. Its label is
+        required by the type but never read, so it no longer duplicates the day
+        face's "Switch to the day sheet" on the night sheet.
 
         It starts at -90° so it arrives at 0° — upright — exactly as the sun
         leaves, and both faces travel through the same 90° arc in the same
         direction.
       */}
       <Motion.View
+        // Both forms, deliberately. The platforms disagree on where
+        // `pointerEvents` lives and each ignores the other's form: React Native
+        // Web reads `style.pointerEvents` (and warns that the prop is
+        // deprecated), while native iOS/Android reads the **prop** only and
+        // drops the style key on the floor — RN's own ViewPropTypes says so.
+        // With the style key alone this overlay stayed touchable on iOS, sat on
+        // top of the sun, and swallowed every press.
+        pointerEvents="none"
         style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
         initial={false}
         animate={{ rotate: dark ? 0 : -90, opacity: dark ? 1 : 0 }}
@@ -71,7 +79,9 @@ export function LampToggle() {
         <IconButton
           icon="weather-night"
           variant="outlined"
-          accessibilityLabel="Switch to the day sheet"
+          // Required by the type, but never announced: this face is hidden from
+          // the accessibility tree above. The day face owns the real label.
+          accessibilityLabel="Night sheet icon, decorative"
         />
       </Motion.View>
     </View>

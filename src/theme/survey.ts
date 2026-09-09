@@ -1,4 +1,9 @@
-import { applyRoundness, darkTheme, lightTheme } from '@rootnative/core'
+import {
+  applyRoundness,
+  darkTheme,
+  defaultTopAppBarTokens,
+  lightTheme,
+} from '@rootnative/core'
 import type { Theme, TypographyToken } from '@rootnative/core'
 import { FACE } from './fonts'
 
@@ -274,6 +279,26 @@ const shared = {
   // it labels, and the contour texture already gives the eye somewhere to
   // rest — generous whitespace would read as a web page, not a printed plate.
   spacing: { xs: 3, sm: 6, md: 10, lg: 16, xl: 24 },
+
+  // The sheet header, aligned to the sheet.
+  //
+  // MD3 insets an app-bar title by 16 (a 4 gutter plus a 12 start inset), which
+  // is tuned for a bar that spans a phone screen. This app draws the bar at the
+  // same width as the plates below it, and the plates take the 32 padding from
+  // `useSheetContentStyle` — so the stock 16 left the title hanging half a
+  // gutter to the left of every other line on the sheet. A printed sheet has
+  // one margin, and the title block sits inside it like everything else.
+  //
+  // Split 20 / 12 rather than 32 / 0: the gutter is what the trailing icon's
+  // touch target is inset by, and zeroing the start inset would let a long
+  // title run right up against the toggle. The two still sum to the 32 the
+  // plates use, so the title's first glyph lands on the same vertical as the
+  // header caption under it.
+  topAppBar: {
+    ...defaultTopAppBarTokens,
+    horizontalPadding: 20,
+    titleStartInset: 12,
+  },
 }
 
 export const surveyLight: Theme = {
