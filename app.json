@@ -33,6 +33,9 @@
     },
     "extra": {
       "router": {}
+    },
+    "experiments": {
+      "baseUrl": "/ui-example"
     }
   }
 }
