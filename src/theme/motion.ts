@@ -2,27 +2,18 @@ import { cubicBezier } from '@rootnative/inertia'
 import type { TransitionConfig } from '@rootnative/inertia'
 
 /**
- * Motion tokens for the Survey theme.
- *
- * These are registered once on `<MotionConfig transitions>` and referred to by
- * name everywhere else (`transition="plate"`). Motion is a theme token here,
- * exactly like a colour or a type face — no screen writes a raw spring.
- *
- * The vocabulary comes from what a survey sheet physically does. A sheet is
- * drawn with a pen, its plates are stacked on a desk, and it folds. Nothing
- * here bounces: paper has weight, and an elastic overshoot would read as a
- * Material app wearing a paper skin.
+ * Motion tokens for the Survey theme, registered once on
+ * `<MotionConfig transitions>` and used by name everywhere else.
  *
  * Two rules decide the type:
  *
  *  - Anything a finger drives is a spring, because it must track the hand.
  *  - Anything that draws itself is timing, because a pen moves at one speed.
+ *
+ * Nothing bounces. Paper has weight, and an overshoot would read as Material.
  */
 
-/**
- * A plate settling onto the desk. Heavier mass and high friction than a
- * Material default, so it arrives and stops rather than wobbling.
- */
+/** A plate settling onto the desk: it arrives and stops, it does not wobble. */
 export const plate = {
   type: 'spring',
   tension: 180,
@@ -30,10 +21,7 @@ export const plate = {
   mass: 1.4,
 } satisfies TransitionConfig
 
-/**
- * A pen stroke. Constant-speed easing with a slight ease-out at the end of the
- * line, which is how a nib lifts. Long enough to read as drawing, not wiping.
- */
+/** A pen stroke. Long enough to read as drawing, not as wiping. */
 export const ink = {
   type: 'timing',
   duration: 900,
@@ -47,10 +35,7 @@ const fold: TransitionConfig = {
   easing: cubicBezier(0.4, 0, 0.2, 1),
 }
 
-/**
- * Touch feedback. Fast and tight — the plate must feel pressed under the
- * finger, with no travel the eye can follow.
- */
+/** Touch feedback, with no travel the eye can follow. */
 const press: TransitionConfig = {
   type: 'spring',
   tension: 420,
@@ -58,15 +43,9 @@ const press: TransitionConfig = {
 }
 
 /**
- * The lamp coming on, or the sheet carried back into daylight.
- *
- * Timing, not a spring, and the one token slower than `ink`. Nothing here
- * moves — it is the sheet changing colour under a different light, and light
- * does not overshoot. A spring would put a wobble on a value that only ever
- * crosses between two colours, and a fast fade reads as a cut.
- *
- * It is deliberately longer than the toggle's own `press` feedback, so the
- * button answers the finger at once while the sheet takes its time behind it.
+ * The lamp coming on. Timing, because nothing moves — the sheet only changes
+ * colour, and a spring would wobble a value that crosses between two colours.
+ * Longer than `press`, so the button answers the finger before the sheet does.
  */
 const lamp = {
   type: 'timing',
@@ -76,10 +55,7 @@ const lamp = {
 
 export const TRANSITIONS = { plate, ink, fold, press, lamp }
 
-/**
- * Narrows `transition="…"` to the five names above, so a typo is a compile
- * error instead of a dev-time warning and a silent fallback spring.
- */
+/** Narrows `transition="…"` to these five names, so a typo fails to compile. */
 declare module '@rootnative/inertia' {
   interface RegisteredTransitions {
     plate: true
@@ -90,19 +66,12 @@ declare module '@rootnative/inertia' {
   }
 }
 
-/* ------------------------------------------------------------------ staging */
-
 /**
  * A named transition, plus a delay.
  *
- * `transition` takes a `TransitionConfig` **or** a registered name, never a name
- * with overrides — so a staggered call site cannot write `transition="plate"`
- * and add its own delay. It has to pass a config. Passing the exported token
- * through this helper keeps that config the same object the registry holds,
- * instead of a second spring written out by hand that then drifts from it.
- *
- * `no-animation` is excluded because it carries no `delay` — postponing the
- * absence of an animation has no meaning, and the type says so.
+ * `transition` takes a config or a registered name, never a name with
+ * overrides, so a delayed call site must pass a config. This keeps that config
+ * the same object the registry holds. `no-animation` carries no `delay`.
  */
 type DelayableTransition = Exclude<TransitionConfig, { type: 'no-animation' }>
 export function withDelay<T extends DelayableTransition>(
@@ -113,18 +82,8 @@ export function withDelay<T extends DelayableTransition>(
 }
 
 /**
- * The plate cascade is no longer computed here. `<Stagger interval={70}>` in
- * the gallery owns it: the parent assigns each child `position * interval`, so
- * a filtered or reordered list re-derives its delays instead of reading a
- * stale `index` prop. `withDelay` stays for the contour rings below, which
- * stagger by ring rather than by list position.
- */
-
-/**
- * Delay before contour ring `index` of `total` starts drawing.
- *
- * The summit ring draws first and the slope follows, so the eye reads the
- * terrain outward from the high point the way a surveyor plots it.
+ * Delay before contour ring `index` of `total` starts drawing. The summit ring
+ * draws first, so the eye reads the terrain outward from the high point.
  */
 export function ringDelay(index: number, total: number) {
   return (index / Math.max(total, 1)) * 700

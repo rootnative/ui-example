@@ -3,19 +3,12 @@ import type { TrekEnrichment } from './types'
 const ENDPOINT = 'https://en.wikipedia.org/w/api.php'
 
 /**
- * Wikimedia asks every client to identify itself. An anonymous or generic
- * agent is rate-limited harder, and is blocked outright — the API answers
- * **403**, not 429.
+ * Wikimedia blocks an anonymous client outright: the API answers 403, not 429.
  *
- * It has to go in `User-Agent`. `Api-User-Agent` alone is not enough: it exists
- * for browsers, which forbid a page from setting `User-Agent` itself, so
- * Wikimedia reads it only as a fallback. A browser always sends its own real
- * `User-Agent` underneath. React Native sends none, so a request carrying only
- * `Api-User-Agent` looks anonymous and is refused.
- *
- * That is why this failed on device while working on web, and why it failed
- * silently: the 403 lands in the `!response.ok` branch, which returns an empty
- * map by design, so every card simply rendered without its photo.
+ * It must go in `User-Agent`. `Api-User-Agent` is only a fallback for
+ * browsers, which send their own `User-Agent` underneath. React Native sends
+ * none, so a request with `Api-User-Agent` alone looks anonymous and is
+ * refused — which is why this failed on device while it worked on web.
  */
 export const USER_AGENT =
   'rootnative-ui-example/1.0 (https://github.com/rootnative)'
@@ -26,23 +19,15 @@ export const WIKIMEDIA_HEADERS = { 'User-Agent': USER_AGENT }
 /**
  * Fetch a Wikimedia image and return it as a `data:` URI.
  *
- * `upload.wikimedia.org` refuses anonymous clients exactly like the API does,
- * so a thumbnail needs the same `User-Agent`. Passing `headers` on an
- * `<Image source>` does **not** achieve that on Android: the native loader
- * builds its own request and prepends its client token, so the agent arrives as
- * `okhttp/4.x …`. Wikimedia blocks that prefix outright — measured, a UA of
- * `okhttp/4.9.2 <our agent>` answers 403 while `<our agent>` alone answers 200.
- * So the header is not ignored; it is overridden into a banned value, and no
- * amount of setting it on the Image can win.
+ * `upload.wikimedia.org` refuses anonymous clients like the API does, and
+ * `headers` on an `<Image source>` cannot satisfy it on Android: the native
+ * loader prepends its own client token, so the agent arrives as
+ * `okhttp/4.x <our agent>`, which Wikimedia answers 403 while `<our agent>`
+ * alone answers 200. `fetch` does honour the header, so the bytes come through
+ * here and reach the Image as a `data:` URI.
  *
- * `fetch` does honour the header — the API call on the same host proves it — so
- * the bytes come through here and reach the Image as a `data:` URI, which needs
- * no network at all.
- *
- * The cost is real and accepted: the image is base64, so it sits in JS memory
- * at about 4/3 of its encoded size and misses the native disk cache. That is
- * affordable for six 960px thumbnails fetched once per session, and it is not
- * the pattern to copy for a long or unbounded list.
+ * The cost is accepted: base64 sits in JS memory at about 4/3 of its encoded
+ * size and misses the native disk cache. Do not copy this for a long list.
  */
 export async function fetchImageAsDataUri(
   url: string,
@@ -67,12 +52,11 @@ export async function fetchImageAsDataUri(
 }
 
 /**
- * Width we ask for. The API snaps this to a rendition that actually exists and
- * returns that URL — 900 comes back as the real 960px file.
+ * Width we ask for. The API snaps this to a rendition that exists and returns
+ * that URL — 900 comes back as the real 960px file.
  *
- * Never build a thumbnail URL by substituting a width into the path. Wikimedia
- * only serves a fixed set of renditions per file, and an unavailable width
- * responds 400. Always use the `source` the API hands back.
+ * Never build a thumbnail URL by substituting a width into the path: Wikimedia
+ * serves a fixed set of renditions and answers 400 for any other width.
  */
 const THUMB_WIDTH = 900
 
@@ -86,13 +70,11 @@ interface ApiPage {
 /**
  * Fetch Wikipedia facts for several trek pages in one request.
  *
- * Returns a map keyed by the *requested* wiki title. The API returns pages in
- * arbitrary order and rewrites titles it redirects (`Torna_Fort` comes back as
- * `Torna Fort`), so results are matched through the `redirects` / `normalized`
- * tables rather than by position.
+ * Returns a map keyed by the requested wiki title. The API answers in
+ * arbitrary order and rewrites titles it redirects, so results are matched
+ * through the `redirects` / `normalized` tables rather than by position.
  *
- * Enrichment is decorative: the app renders from treks.json alone. A failure
- * here resolves to an empty map instead of rejecting.
+ * Enrichment is decorative, so a failure resolves to an empty map.
  */
 export async function fetchEnrichment(
   wikiTitles: string[],
@@ -118,14 +100,11 @@ export async function fetchEnrichment(
       signal,
       headers: {
         'User-Agent': USER_AGENT,
-        // Kept for the web build, where the browser owns `User-Agent` and
-        // strips the header above.
+        // For the web build, where the browser strips the header above.
         'Api-User-Agent': USER_AGENT,
       },
     })
 
-    // 429 is common when several screens mount at once. Treat it like any
-    // other failure: the screen still renders from local data.
     if (!response.ok) return {}
 
     const body = await response.json()
@@ -141,9 +120,8 @@ export async function fetchEnrichment(
       requestedFor.set(entry.to, requestedFor.get(entry.from) ?? entry.from)
     }
 
-    // The thumbnails are fetched together rather than one after another: they
-    // are independent requests to the same host, and six in sequence would make
-    // the last card wait on the five before it.
+    // Together rather than in sequence: six in a row would make the last card
+    // wait on the five before it.
     const entries = await Promise.all(
       pages.map(async (page) => {
         const key = requestedFor.get(page.title) ?? page.title

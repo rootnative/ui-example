@@ -22,7 +22,6 @@ function ThemedStack() {
           contentStyle: { backgroundColor: theme.colors.surface },
         }}
       />
-      {/* Dark ground needs light status-bar glyphs, and the reverse. */}
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>
   )
@@ -31,8 +30,8 @@ function ThemedStack() {
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(FONTS)
 
-  // Hold on the paper colour until the faces are ready, so the first frame
-  // never flashes a system serif and then reflows.
+  // Hold the paper colour until the faces are ready, so the first frame never
+  // flashes a system serif and then reflows.
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: CONTOUR.light.paper }} />
   }

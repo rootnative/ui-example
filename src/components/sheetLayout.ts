@@ -6,38 +6,19 @@ import { HEADER_ALPHA, withAlpha } from '../theme/color'
 import { Platform, type ViewStyle } from 'react-native'
 
 /**
- * How wide the reading column is allowed to get.
- *
- * A survey sheet is a fixed size — it does not grow to the width of the desk.
- * On a wide browser window an unconstrained list stretches a card to 2000px and
- * the eye loses the line, so the content column stops here and centres in
- * whatever space is left.
+ * How wide the reading column may get. A survey sheet is a fixed size: on a
+ * wide window an unconstrained list stretches a card to 2000px.
  */
 export const SHEET_MAX_WIDTH = 720
 
 /**
- * Padding and centring for a sheet's scroll content.
+ * Padding and centring for a sheet's scroll content. It is a
+ * `contentContainerStyle`, so the scroll bar stays at the window edge while
+ * the plates sit in a centred column.
  *
- * Returns a `contentContainerStyle`, so the constraint lives on the content
- * rather than on the scroller — the scroll bar stays at the window edge where
- * it belongs, while the plates sit in a centred column.
- *
- * **The margin comes from `useBreakpointValue`, not from a measured width.**
- * This used to read `useWindowDimensions()` and compare against a local
- * breakpoint of 600. On a static export that resolved on a server with no DOM,
- * where react-native-web pins `Dimensions` to `width: 0`, so the phone margin
- * of 20 was written into the exported HTML — and React 19 adopts a server
- * style on a hydration mismatch rather than repairing it, with no error of any
- * kind. The desk therefore kept the phone margin for good, 12pt tighter than
- * the gutter `AppBar` puts on its own title, which is what pulled the plates
- * out of line with the header.
- *
- * `useBreakpointValue` is hydration-safe by construction as of components
- * `0.0.0-alpha.16`: it reports `compact` while the client reproduces the
- * server's markup and switches to the measured class on the re-render React
- * schedules once hydration finishes — an ordinary update, which *does* patch
- * the DOM. MD3's `medium` class starts at 600, so this is the same rule the
- * local constant expressed, and the constant is gone.
+ * The margin must come from `useBreakpointValue`, which is hydration-safe.
+ * `useWindowDimensions()` reads `width: 0` on the static export, and React 19
+ * adopts a server style on a mismatch, so a wide window keeps the phone margin.
  */
 export function useSheetContentStyle(gap: number): SheetContentStyle {
   const padding = useBreakpointValue({ compact: 20, medium: 32 })
@@ -45,8 +26,6 @@ export function useSheetContentStyle(gap: number): SheetContentStyle {
   return {
     padding,
     gap,
-    // `alignSelf` centres the content box inside a wider scroller. `width:100%`
-    // keeps it filling the column on a phone, where the max never bites.
     width: '100%' as const,
     maxWidth: SHEET_MAX_WIDTH,
     alignSelf: 'center' as const,
@@ -63,41 +42,24 @@ export type SheetContentStyle = {
 }
 
 /**
- * The bar, exactly as a phone draws it: edge to edge, content included.
+ * The bar, exactly as a phone draws it: edge to edge.
  *
- * The plates stop at `SHEET_MAX_WIDTH` because a survey sheet is a fixed size.
- * The bar does not. It is chrome, it spans the window on every phone, and it
- * now spans the window here, so the two platforms draw the same header.
- *
- * That means the title sits against the left of the window rather than above
- * the first plate, and the day/night toggle against the right. It is a
- * deliberate trade and it is the opposite of what this file used to do: the
- * bar was capped at the column so its title lined up with the plates, which
- * kept the pair aligned but left a 720pt band of header floating on a bare
- * desk. Alignment with the column is what was given up to get the full-width
- * bar; `AppBar`'s own internal gutter is all that insets the title now.
- *
- * Native needs no branch — a phone window is narrower than the column, so this
- * is what it already rendered.
+ * The plates stop at `SHEET_MAX_WIDTH`, the bar does not — it is chrome, so
+ * both platforms draw the same header. The trade is deliberate: the title no
+ * longer lines up with the first plate, but the header no longer floats as a
+ * 720pt band on a bare desk.
  */
 export function useSheetHeaderStyle(): ViewStyle {
   return { width: '100%', ...STICKY_HEADER }
 }
 
 /**
- * Pin the bar to the top of the window while the page scrolls under it.
+ * Pins the bar while the page scrolls under it. Web only: the document
+ * scrolls there, so a sibling of the content would scroll away with it.
  *
- * Web only, and the reason the bar keeps working now that the document
- * scrolls rather than a `ScrollView`: a sibling of the content would simply
- * scroll away with it. Native needs nothing — the bar is outside the scroller
- * there, so it never moves.
- *
- * `position: 'sticky'` is a real `react-native-web` value but not a React
- * Native one, so the type has to be widened by hand. `zIndex` puts the bar
- * over the plates that pass beneath it.
- *
- * Sticky is capped by the containing block, so every box between `#root` and
- * this one has to grow with the page — see the CSS in `app/+html.tsx`.
+ * `position: 'sticky'` is a react-native-web value, not a React Native one, so
+ * the type needs the cast. Sticky is capped by the containing block, so every
+ * box between `#root` and this one must grow with the page — see `app/+html.tsx`.
  */
 const STICKY_HEADER: ViewStyle =
   Platform.OS === 'web'
@@ -105,23 +67,12 @@ const STICKY_HEADER: ViewStyle =
     : {}
 
 /**
- * How a screen's root fills the window.
+ * How a screen's root fills the window. `flex: 1` fixes the root at one window,
+ * which is right on native and wrong on web, where the page must grow past it.
  *
- * `flex: 1` is right on native and wrong on web: it fixes the root at one
- * window, and the page has to be able to grow past that for the document to
- * scroll. `minHeight` sets the floor instead and leaves the ceiling open.
- *
- * **The three flex keys are the half that was missing.** `Layout` applies its
- * own `{ flex: 1 }` to the SafeAreaView *before* this style, so adding a
- * `minHeight` alone left `flex-grow: 1` and `flex-basis: 0%` in place and the
- * root still took its height from its parent rather than from its content.
- * The page then ran to one window while the plates overflowed past it, which
- * is what left the sheet ending short of the last plate: the contour field is
- * measured from the content box, and the content box was not the page.
- *
- * `flexBasis: 'auto'` with no grow and no shrink is the `flex: none` the web
- * branch wanted all along — size to content, and let `minHeight` hold the
- * floor on a page too short to fill the window.
+ * The three flex keys are needed as well as `minHeight`: `Layout` applies its
+ * own `{ flex: 1 }` before this style, so `minHeight` alone leaves
+ * `flex-basis: 0%` and the root still sizes from its parent, not its content.
  */
 export const PAGE_FILL: ViewStyle =
   Platform.OS === 'web'
@@ -135,36 +86,23 @@ export const PAGE_FILL: ViewStyle =
 
 /**
  * How far the page scrolls before the bar reaches its settled veil, in points.
- *
- * Short on purpose. The bar has to be carrying its surface by the time the
- * first plate reaches it, or the plate reads through the title.
+ * Short on purpose: the bar must carry its surface before the first plate
+ * reaches it, or the plate reads through the title.
  */
 const HEADER_SETTLED_AT = 56
 
 /**
- * The bar's own surface: clear on the sheet, veiled once the page moves.
+ * The bar's own surface: clear on the sheet, veiled once the page moves. The
+ * screens pass `containerColor="transparent"`, so this paints the band instead.
  *
- * `AppBar` paints nothing itself — the screens pass `containerColor="transparent"`
- * — and this fragment paints it instead, so the band appears as the reader
- * scrolls rather than sitting there from the first frame.
+ * Three choices hold the fade together:
  *
- * **Both ends of the fade are the same colour.** The near end is that colour at
- * zero alpha rather than the keyword `transparent`, which resolves to
- * `rgba(0, 0, 0, 0)`: interpolating from it drags every frame of the fade
- * through black, so a header on a pale sheet would darken before it settled.
- * Matching the channels and moving only the alpha keeps the fade clean on both
- * palettes.
- *
- * `surfaceContainer` rather than `surface` is what makes the settled state
- * visible at all. The page is already `surface`, so fading to it would end on
- * a band that cannot be told apart from the sheet behind it.
- *
- * **The far end is not opaque either.** A solid band swallowed whatever was
- * passing under it: the sheet stopped dead at the bar, and a plate sliding
- * beneath simply disappeared instead of travelling under a header. Ending on
- * `HEADER_ALPHA` keeps the title readable over a photograph while the movement
- * underneath stays legible as movement — the bar reads as laid over the page
- * rather than cut out of it.
+ *  - Both ends are the same colour, the near one at zero alpha. The keyword
+ *    `transparent` is `rgba(0, 0, 0, 0)`, which drags the fade through black.
+ *  - `surfaceContainer`, not `surface`: the page is already `surface`, so the
+ *    settled band would not be visible against it.
+ *  - The far end stops at `HEADER_ALPHA`. A solid band swallows the plate
+ *    passing under it.
  */
 export function useSheetHeaderSurface(scrollY: SharedValue<number>) {
   const theme = useTheme()

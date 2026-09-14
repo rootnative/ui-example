@@ -7,9 +7,8 @@ export const REGION: string = raw.region
 export const TREKS = raw.treks as Trek[]
 
 /**
- * Module-level cache. Wikimedia rate-limits (HTTP 429) when several screens
- * request the same pages in quick succession, so the result is fetched once
- * per app session and shared by every screen.
+ * Module-level cache. Wikimedia answers 429 when several screens request the
+ * same pages together, so the result is fetched once per app session.
  */
 let cache: Record<string, TrekEnrichment> | null = null
 let inFlight: Promise<Record<string, TrekEnrichment>> | null = null
@@ -37,9 +36,8 @@ interface TreksState {
 
 /**
  * Every trek, merged with Wikipedia photos and coordinates once they arrive.
- *
- * The list renders immediately from the local dataset — enrichment only adds
- * imagery, so a slow or failed network never blocks the screen.
+ * The list renders at once from the local dataset, so a slow or failed network
+ * never blocks the screen.
  */
 export function useTreks(): TreksState {
   const [enrichment, setEnrichment] = useState<Record<

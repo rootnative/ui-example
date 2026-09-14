@@ -14,21 +14,12 @@ import { FACE } from './fonts'
  * same Card, Chip, AppBar and Typography that render Material Design 3 render
  * this. That is the point of the example.
  *
- * Two palettes share one type scale, shape and elevation set:
- *
- *  - `surveyLight` — the printed sheet on a desk.
- *  - `surveyDark`  — the same sheet read at camp under a head torch. It is not
- *    an inversion: a night palette keeps the paper warmth, drops the ground to
- *    a dark slate, and shifts the accent to the amber a torch actually casts.
+ * `surveyDark` is not an inversion of `surveyLight`. It is the same sheet read
+ * under a head torch: the paper warmth stays, the ground drops to slate, and
+ * the accent moves to the amber a torch casts.
  */
 
-/* ------------------------------------------------------------------ colour */
-
-/**
- * Sampled from a printed sheet rather than picked from a colour wheel: aged
- * paper, iron-gall ink, the sepia used for contour lines, and the faded blue
- * reserved for water. Nothing here is a Material palette.
- */
+/** Sampled from a printed sheet, not picked from a colour wheel. */
 const paper = '#EDE4D2' // aged sheet
 const paperLow = '#E4D9C3' // fold shadow / recessed areas
 const paperHigh = '#F5EEE0' // fresh card stock
@@ -50,18 +41,10 @@ const lightColors: Theme['colors'] = {
 
   secondary: water,
   onSecondary: paperHigh,
-  // Not a tint of `secondary`, on purpose. The container pair is what a
-  // selected `Chip variant="filter"` fills with, and on a survey sheet blue is
-  // reserved for water — a selected GRADE chip rendered in river blue reads as
-  // a different map feature, not as a marked legend entry. A marked entry takes
-  // the sheet's own accent, so this is a sepia wash with the ink the annotation
-  // is written in.
-  //
-  // The wash is deliberately deeper than `sepiaPale`. A selected filter chip
-  // drops its border to nothing, so the fill is the only thing carrying the
-  // state: `sepiaPale` on paper is 1.39:1 and reads as unmarked once the
-  // hairline goes. This sits at 2.04:1 against the sheet while still holding
-  // 5.45:1 for the label — the deepest wash that keeps the text above 4.5.
+  // A sepia wash, not a tint of `secondary`: blue is reserved for water, so a
+  // selected filter chip in river blue reads as a map feature. Deeper than
+  // `sepiaPale` because a selected chip drops its border, which leaves the
+  // fill alone to carry the state — 2.04:1 on the sheet, 5.45:1 for the label.
   secondaryContainer: '#C09A78',
   onSecondaryContainer: '#4A1F0B',
 
@@ -78,8 +61,8 @@ const lightColors: Theme['colors'] = {
   background: paper,
   onBackground: ink,
 
-  // The surface ramp reads as sheets of paper stacked on a desk, so the
-  // "higher" containers are lighter — the opposite of the MD3 dark ramp.
+  // Higher containers are lighter, the opposite of the MD3 dark ramp: the
+  // ramp reads as sheets of paper stacked on a desk.
   surface: paper,
   onSurface: ink,
   surfaceDim: '#DCCFB5',
@@ -105,11 +88,6 @@ const lightColors: Theme['colors'] = {
   scrim: 'rgba(42, 33, 24, 0.55)',
 }
 
-/**
- * Night palette. The ground is a warm slate rather than a neutral black, so
- * the sheet still reads as paper in shadow, and the accent moves to the amber
- * of a head torch — the colour you actually navigate by after dark.
- */
 const slate = '#1C1A17' // ground: warm, never pure black
 const slateLow = '#161412' // recessed
 const slateHigh = '#252220' // raised card stock
@@ -129,11 +107,8 @@ const darkColors: Theme['colors'] = {
 
   secondary: '#8FADB9', // moonlit water
   onSecondary: '#16262D',
-  // Same reasoning as the light sheet: the container pair marks a selected
-  // legend entry, so it takes the head-torch amber rather than moonlit water,
-  // and it is deepened past `primaryContainer` for the same reason — a selected
-  // chip has no border, so the fill alone must carry the state. 2.29:1 against
-  // the slate, 5.39:1 for the label.
+  // Same reasoning as the light sheet: amber rather than moonlit water, and
+  // deepened past `primaryContainer`. 2.29:1 on the slate, 5.39:1 for the label.
   secondaryContainer: '#7D461C',
   onSecondaryContainer: '#F6D3B4',
 
@@ -175,16 +150,13 @@ const darkColors: Theme['colors'] = {
   scrim: 'rgba(0, 0, 0, 0.66)',
 }
 
-/* -------------------------------------------------------------- typography */
-
 function token(
   fontFamily: string,
   fontSize: number,
   lineHeight: number,
   letterSpacing = 0,
 ): TypographyToken {
-  // Weight is carried by the font file, not this field: each Spectral weight
-  // registers as its own family, and RN will not synthesise the rest.
+  // The font file carries the weight, not this field — see `FACE`.
   return { fontFamily, fontSize, fontWeight: '400', lineHeight, letterSpacing }
 }
 
@@ -212,7 +184,6 @@ const typography: Theme['typography'] = {
   bodyMedium: token(FACE.serif, 14.5, 22, 0.2),
   bodySmall: token(FACE.serif, 13, 19, 0.2),
 
-  // Legend text on a real sheet is small, spaced and mechanical.
   labelLarge: token(FACE.monoMedium, 12.5, 17, 1.1),
   labelMedium: token(FACE.mono, 11, 15, 1.3),
   labelSmall: token(FACE.mono, 9.5, 13, 1.5),
@@ -234,19 +205,12 @@ const typography: Theme['typography'] = {
   labelSmallEmphasized: token(FACE.monoMedium, 9.5, 13, 1.5),
 }
 
-/* ------------------------------------------------------- shape & elevation */
-
-/**
- * Paper does not have rounded corners. `applyRoundness(0)` flattens every
- * intermediate corner token to 0 in one call, which removes the strongest
- * visual tell of Material Design.
- */
+/** Paper has no rounded corners, and roundness is the strongest MD3 tell. */
 const shape = applyRoundness(0)
 
 /**
- * A printed card casts a hard offset shadow, not a soft ambient glow. Setting
- * `shadowRadius: 0` with a positive offset gives ink-on-desk instead of the
- * MD3 elevation blur — from tokens alone, with no component changes.
+ * A printed card casts a hard offset shadow, not an ambient glow.
+ * `shadowRadius: 0` with a positive offset gives that from tokens alone.
  */
 function press(shadowColor: string) {
   return (offset: number, opacity: number) => ({
@@ -270,30 +234,17 @@ function elevationSet(shadowColor: string, scale: number): Theme['elevation'] {
   }
 }
 
-/* -------------------------------------------------------------- the themes */
-
 const shared = {
   typography,
   shape,
-  // Tighter than MD3. A survey sheet packs its annotation close to the feature
-  // it labels, and the contour texture already gives the eye somewhere to
-  // rest — generous whitespace would read as a web page, not a printed plate.
+  // Tighter than MD3: a sheet packs its annotation close to the feature it
+  // labels, and the contour texture already gives the eye somewhere to rest.
   spacing: { xs: 3, sm: 6, md: 10, lg: 16, xl: 24 },
 
-  // The sheet header, aligned to the sheet.
-  //
-  // MD3 insets an app-bar title by 16 (a 4 gutter plus a 12 start inset), which
-  // is tuned for a bar that spans a phone screen. This app draws the bar at the
-  // same width as the plates below it, and the plates take the 32 padding from
-  // `useSheetContentStyle` — so the stock 16 left the title hanging half a
-  // gutter to the left of every other line on the sheet. A printed sheet has
-  // one margin, and the title block sits inside it like everything else.
-  //
-  // Split 20 / 12 rather than 32 / 0: the gutter is what the trailing icon's
-  // touch target is inset by, and zeroing the start inset would let a long
-  // title run right up against the toggle. The two still sum to the 32 the
-  // plates use, so the title's first glyph lands on the same vertical as the
-  // header caption under it.
+  // 20 + 12 sums to the 32 the plates take from `useSheetContentStyle`, so the
+  // title lands on the same vertical as the caption under it. The stock MD3 16
+  // left it half a gutter to the left of every other line on the sheet. The
+  // split keeps a gutter for the trailing icon's touch target.
   topAppBar: {
     ...defaultTopAppBarTokens,
     horizontalPadding: 20,
@@ -312,11 +263,10 @@ export const surveyDark: Theme = {
   ...darkTheme,
   ...shared,
   colors: darkColors,
-  // A hard shadow needs more weight on a dark ground to stay visible at all.
+  // A hard shadow needs more weight to stay visible on a dark ground.
   elevation: elevationSet('#000000', 2.2),
 }
 
-/** Colours for map furniture drawn in SVG — contours, hairlines, water. */
 export interface ContourRamp {
   line: string
   tint: string

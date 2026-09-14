@@ -4,24 +4,13 @@ import { Motion } from '@rootnative/inertia'
 import { Platform, StyleSheet, View } from 'react-native'
 
 /**
- * The day / night switch: the lamp going on over the sheet.
+ * The day / night switch. The palette swap is one `setMode` call; this file
+ * only makes the switch read as a switch.
  *
- * The palette swap itself is still one `setMode` call on one `ThemeProvider`
- * prop — nothing here helps the theme system do its job. This file only makes
- * the switch *read* as a switch, and it stays the whole of that job: the
- * gallery hands over a toggle, not a toggle plus a rotation plus a cross-fade.
- *
- * **Two icons, stacked, not one icon that swaps.** Rotating a single
- * `IconButton` whose `icon` prop flips mid-turn shows the sun becoming a moon
- * at whatever angle the spring happened to reach, which reads as a dropped
- * frame rather than as a movement. Both faces are mounted instead, one over the
- * other, and each turns through its own half of the same arc while the pair
- * cross-fades. The eye follows one continuous rotation.
- *
- * The sun turns clockwise into the night and the moon turns clockwise back out
- * of it, so the gesture is reversible: pressing again unwinds exactly the arc
- * the last press drew. Both faces share the `lamp` timing the sheet's ink uses,
- * which is what ties the button to the ground changing colour behind it.
+ * Two icons, stacked, not one icon that swaps: an `icon` prop that flips
+ * mid-turn shows the sun becoming a moon at whatever angle the spring reached.
+ * Both faces are mounted, each turns through its own half of the same arc, and
+ * the pair cross-fades on the same `lamp` timing the sheet's ink uses.
  */
 export function LampToggle() {
   const { scheme, setMode } = useThemeMode()
@@ -29,11 +18,7 @@ export function LampToggle() {
 
   return (
     <View>
-      {/*
-        The day face carries the press. It sits on top, holds the real
-        `IconButton` and the only `onPress` and label in the pair, and fades to
-        nothing on the night sheet — where the moon below shows through.
-      */}
+      {/* The day face carries the press, and the only label in the pair. */}
       <Motion.View
         initial={false}
         animate={{ rotate: dark ? 90 : 0, opacity: dark ? 0 : 1 }}
@@ -50,23 +35,14 @@ export function LampToggle() {
       </Motion.View>
 
       {/*
-        The night face is decoration, and is marked as such. It is a second
-        rendering of the same control, so leaving it in the accessibility tree
-        would announce the toggle twice and offer a second target. Its label is
-        required by the type but never read, so it no longer duplicates the day
-        face's "Switch to the day sheet" on the night sheet.
-
-        It starts at -90° so it arrives at 0° — upright — exactly as the sun
-        leaves, and both faces travel through the same 90° arc in the same
-        direction.
+        The night face is decoration: a second rendering of the same control
+        would announce the toggle twice and offer a second target. It starts at
+        -90° so it arrives upright exactly as the sun leaves.
       */}
       <Motion.View
-        // The style key is the form both platforms agree on, so it carries the
-        // intent everywhere. The prop is kept for native only: with the style
-        // key alone this overlay stayed touchable on iOS, sat on top of the
-        // sun, and swallowed every press. React Native Web reads
-        // `style.pointerEvents` and warns once per session that the prop is
-        // deprecated, so web never sees the prop and never warns.
+        // The style key alone leaves this overlay touchable on iOS, where it
+        // swallows every press. The prop is native-only because react-native-web
+        // warns that it is deprecated.
         {...Platform.select({ web: null, default: { pointerEvents: 'none' } })}
         style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
         initial={false}
@@ -78,8 +54,7 @@ export function LampToggle() {
         <IconButton
           icon="weather-night"
           variant="outlined"
-          // Required by the type, but never announced: this face is hidden from
-          // the accessibility tree above. The day face owns the real label.
+          // Required by the type, never announced: the face above is hidden.
           accessibilityLabel="Night sheet icon, decorative"
         />
       </Motion.View>
