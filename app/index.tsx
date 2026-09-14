@@ -1,9 +1,8 @@
 import { AppBar, Column, Layout, Typography } from '@rootnative/components'
 import { useTheme } from '@rootnative/core'
-import { Motion, Presence, Stagger, useScroll } from '@rootnative/inertia'
+import { Presence, Stagger } from '@rootnative/inertia'
 import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { View } from 'react-native'
 import {
   applyFilter,
   FilterBar,
@@ -11,10 +10,13 @@ import {
   type TrekFilter,
 } from '../src/components/FilterBar'
 import { LampToggle } from '../src/components/LampToggle'
+import { PageScroll, usePageScroll } from '../src/components/pageScroll'
 import { SheetBackdrop } from '../src/components/Sheet'
 import {
+  PAGE_FILL,
   useSheetContentStyle,
   useSheetHeaderStyle,
+  useSheetHeaderSurface,
 } from '../src/components/sheetLayout'
 import { TrekCard } from '../src/components/TrekCard'
 import { useTreks } from '../src/data/useTreks'
@@ -24,15 +26,15 @@ import { useTreks } from '../src/data/useTreks'
  *
  * The header is an `AppBar variant="large"`, which collapses to the 64dp form
  * as the list scrolls under it. `scrollY` and `onScroll` come from one
- * `useScroll()` — the bar reads the offset on the UI thread, so the collapse
- * never waits on a JS frame.
+ * `usePageScroll()`, which reads whichever thing scrolls: a `ScrollView` on
+ * native, the document on web. `PageScroll` renders the matching body.
  *
  * The contour texture sits *inside* the list rather than behind it. Wrapping
  * the scroller would pin the paper to the viewport and slide the cards over it;
  * measured from the content, the ink travels with the plates the way a printed
- * sheet does.
+ * sheet does. It spans the window rather than the column — see `SheetBackdrop`.
  *
- * **`Motion.ScrollView`, not `Motion.FlatList`.** The list virtualised happily
+ * **A plain scroller, not `Motion.FlatList`.** The list virtualised happily
  * until the filter arrived, and virtualisation is the one thing `Presence`
  * cannot share a list with: an exiting card has to stay mounted until its exit
  * finishes, while a virtualising list unmounts rows on its own schedule. The
@@ -43,16 +45,18 @@ import { useTreks } from '../src/data/useTreks'
 export default function GalleryScreen() {
   const theme = useTheme()
   const { treks, loading } = useTreks()
-  const { scrollY, onScroll } = useScroll()
+  const scroll = usePageScroll()
   const contentStyle = useSheetContentStyle(24)
   const headerStyle = useSheetHeaderStyle()
+  // The bar paints nothing until the page moves — see `useSheetHeaderSurface`.
+  const headerSurface = useSheetHeaderSurface(scroll.scrollY)
   const [content, setContent] = useState({ width: 0, height: 0 })
   const [filter, setFilter] = useState<TrekFilter>(NO_FILTER)
 
   const visible = useMemo(() => applyFilter(treks, filter), [treks, filter])
 
-  // `onContentSizeChange` is the only measurement that reports the *scrollable*
-  // size rather than the visible box, which is exactly what the texture needs.
+  // `PageScroll` reports the *scrollable* size rather than the visible box,
+  // which is exactly what the texture needs.
   function handleContentSize(width: number, height: number) {
     setContent((current) =>
       current.width === width && current.height === height
@@ -68,53 +72,42 @@ export default function GalleryScreen() {
     // default for exactly this reason, but this screen owns its top inset too,
     // so it still states both rather than inheriting.
     <Layout
-      edges={['top', 'bottom']}
-      style={{ backgroundColor: theme.colors.surface, flex: 1 }}
+      edges={['top']}
+      style={{ backgroundColor: theme.colors.surface, ...PAGE_FILL }}
     >
+      {/*
+        First child, before the bar: the texture is painted behind everything,
+        including the header, which is what makes a transparent header read as
+        transparent. It takes no space — see `SheetBackdrop`.
+      */}
+      <SheetBackdrop content={content} scrollY={scroll.scrollY} />
+
       <AppBar
         variant="large"
         title="Sahyadri Range"
-        scrollOffset={scrollY}
-        // The bar is a sibling of the scroller, so `contentContainerStyle`
-        // never reaches it. Without this it spanned the whole window while the
-        // plates sat in a 720px column, which put the title and the toggle a
-        // thousand pixels off the sheet on a desktop display.
-        style={headerStyle}
+        scrollOffset={scroll.scrollY}
+        // The bar is a sibling of the content, so `contentStyle` never reaches
+        // it. Without this it spanned the whole window while the plates sat in
+        // a 720px column, which put the title and the toggle a thousand pixels
+        // off the sheet on a desktop display. On web the same style also pins
+        // the bar — see `useSheetHeaderStyle`.
+        style={[headerStyle, headerSurface]}
+        // The band is drawn by `headerSurface` above, which fades it in from
+        // clear as the sheet moves. `AppBar` must not paint a container of its
+        // own underneath that, or the fade has a solid colour behind it and
+        // nothing appears to change.
+        containerColor="transparent"
         // `trailing` rather than `actions`: the toggle owns its own motion and
         // renders two stacked faces, where `actions` builds only icon and text
         // buttons. The two props are mutually exclusive by type anyway.
         trailing={<LampToggle />}
       />
 
-      <Motion.ScrollView
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        style={{ flex: 1, backgroundColor: theme.colors.surface }}
-        contentContainerStyle={contentStyle}
-        onContentSizeChange={handleContentSize}
+      <PageScroll
+        scroll={scroll}
+        contentStyle={contentStyle}
+        onContentSize={handleContentSize}
       >
-        {/*
-          Absolutely positioned behind every row, at the full scrollable size,
-          so the texture travels with the plates.
-
-          `left`/`top` are negated by the container's padding so the texture
-          reaches the edges rather than starting inside the margin.
-        */}
-        {content.width > 0 ? (
-          <View
-            style={{
-              position: 'absolute',
-              top: -contentStyle.padding,
-              left: -contentStyle.padding,
-              width: content.width,
-              height: content.height,
-              pointerEvents: 'none',
-            }}
-          >
-            <SheetBackdrop width={content.width} height={content.height} />
-          </View>
-        ) : null}
-
         <Column gap="lg">
           <Typography variant="labelSmall" color={theme.colors.primary}>
             {loading
@@ -169,7 +162,7 @@ export default function GalleryScreen() {
             No surveyed route matches this legend.
           </Typography>
         ) : null}
-      </Motion.ScrollView>
+      </PageScroll>
     </Layout>
   )
 }

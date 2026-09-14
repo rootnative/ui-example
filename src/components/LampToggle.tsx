@@ -1,7 +1,7 @@
 import { IconButton } from '@rootnative/components'
 import { useThemeMode } from '@rootnative/core'
 import { Motion } from '@rootnative/inertia'
-import { StyleSheet, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 
 /**
  * The day / night switch: the lamp going on over the sheet.
@@ -61,14 +61,13 @@ export function LampToggle() {
         direction.
       */}
       <Motion.View
-        // Both forms, deliberately. The platforms disagree on where
-        // `pointerEvents` lives and each ignores the other's form: React Native
-        // Web reads `style.pointerEvents` (and warns that the prop is
-        // deprecated), while native iOS/Android reads the **prop** only and
-        // drops the style key on the floor — RN's own ViewPropTypes says so.
-        // With the style key alone this overlay stayed touchable on iOS, sat on
-        // top of the sun, and swallowed every press.
-        pointerEvents="none"
+        // The style key is the form both platforms agree on, so it carries the
+        // intent everywhere. The prop is kept for native only: with the style
+        // key alone this overlay stayed touchable on iOS, sat on top of the
+        // sun, and swallowed every press. React Native Web reads
+        // `style.pointerEvents` and warns once per session that the prop is
+        // deprecated, so web never sees the prop and never warns.
+        {...Platform.select({ web: null, default: { pointerEvents: 'none' } })}
         style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
         initial={false}
         animate={{ rotate: dark ? 0 : -90, opacity: dark ? 1 : 0 }}

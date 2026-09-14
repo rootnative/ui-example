@@ -1,15 +1,9 @@
-import {
-  Card,
-  Chip,
-  Column,
-  Row,
-  Skeleton,
-  Typography,
-} from '@rootnative/components'
+import { Card, Column, Row, Skeleton, Typography } from '@rootnative/components'
 import { useTheme } from '@rootnative/core'
 import { Motion } from '@rootnative/inertia'
 import type { EnrichedTrek } from '../data/types'
 import { elevationGain, gradient } from '../data/types'
+import { SURFACE_ALPHA, withAlpha } from '../theme/color'
 import { plate } from '../theme/motion'
 
 /**
@@ -20,8 +14,8 @@ import { plate } from '../theme/motion'
  *  - On mount the plate settles onto the desk. The delay that makes the list
  *    deal itself out belongs to the `<Stagger>` in the gallery, not here — see
  *    the note on the settle transition below.
- *  - On press it sinks: the lift drops to nothing and the hard offset shadow
- *    shortens with it, as if a thumb pushed the card into the paper.
+ *  - On press it sinks: the lift drops to nothing, as if a thumb pushed the
+ *    card into the paper.
  *
  * A third carries the filter. `layout` animates the position change a re-filtered
  * list forces on the surviving plates, and `exit` slides a filtered-out plate off
@@ -82,12 +76,24 @@ export function TrekCard({ trek, loading, onPress }: TrekCardProps) {
       layout="plate"
       // The plate sinks under the finger. `pressed` owns its own 0↔1 progress,
       // so releasing fades the layer out without disturbing anything else.
-      gesture={{
-        pressed: { translateY: LIFT, shadowOffset: { width: 1, height: 1 } },
-      }}
+      //
+      // Only the lift animates. The hard offset shadow belongs to the `<Card>`
+      // below, not to this wrapper, so a `shadowOffset` key here drives a
+      // shadow that has no colour and no opacity to paint with — it rendered
+      // nothing on any platform, and react-native-web logged the deprecated
+      // `shadow*` style warning for it on every web start.
+      gesture={{ pressed: { translateY: LIFT } }}
     >
       <Card
         variant="elevated"
+        // `surfaceContainerLow` is what the elevated variant paints by
+        // default; this is the same colour, held just off solid so the sheet
+        // reads through it. Passing the variant's own colour rather than a new
+        // one keeps the plate on the palette in both schemes.
+        containerColor={withAlpha(
+          theme.colors.surfaceContainerLow,
+          SURFACE_ALPHA,
+        )}
         // A hairline keeps the card readable on the night sheet, where a hard
         // offset shadow has almost no ground to fall on. It also reads as a
         // pasted-on plate against the contour texture.
@@ -160,12 +166,53 @@ export function TrekCard({ trek, loading, onPress }: TrekCardProps) {
           </Row>
 
           <Row gap="sm" wrap>
-            <Chip variant="assist">{trek.difficulty}</Chip>
-            <Chip variant="assist">{trek.baseVillage}</Chip>
+            <Tag>{trek.difficulty}</Tag>
+            <Tag>{trek.baseVillage}</Tag>
           </Row>
         </Card.Content>
       </Card>
     </Motion.Pressable>
+  )
+}
+
+/**
+ * A static metadata pill, cut to the assist-chip metrics.
+ *
+ * These two labels are legend, not controls: nothing happens when you press
+ * them. `Chip` is a `Pressable`, so react-native-web renders it as a `<button>`
+ * and each one landed inside the plate's own button. A button cannot contain a
+ * button, so React reported a hydration error and the browser lifted the inner
+ * pair out of the tab order — two dead stops for a keyboard user.
+ *
+ * The metrics are copied from the rendered assist chip so the plate reads the
+ * same as before: 32pt tall, 16pt of side padding, a 1pt outline and a
+ * `labelLarge` face. The height and the padding are the chip's own numbers
+ * rather than spacing tokens — this theme cuts its scale tighter than the
+ * Material default, so `px="md"` is 10 here and the pill came out narrow. The
+ * outline and the corner stay theme tokens, so the night sheet swaps with the
+ * rest of the palette.
+ */
+function Tag({ children }: { children: string }) {
+  const theme = useTheme()
+
+  return (
+    <Row
+      align="center"
+      style={{
+        height: 32,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.outline,
+        borderRadius: theme.shape.cornerSmall,
+        // The pill carries its own veil rather than letting the sheet run
+        // straight through it. An outline with nothing behind it let a contour
+        // line cross the label, which read as a printing slip rather than as a
+        // pill lying on a sheet.
+        backgroundColor: withAlpha(theme.colors.surface, SURFACE_ALPHA),
+      }}
+    >
+      <Typography variant="labelLarge">{children}</Typography>
+    </Row>
   )
 }
 

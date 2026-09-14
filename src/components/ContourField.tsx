@@ -41,7 +41,7 @@ const MotionEllipse = createMotionSvgComponent(Ellipse, {
 })
 
 interface Peak {
-  /** Centre, as a fraction of the field's width and height. */
+  /** Centre. `x` is a fraction of the field's width, `y` of one band's height. */
   x: number
   y: number
   /** Radius of the outermost ring, as a fraction of the width. */
@@ -53,12 +53,65 @@ interface Peak {
   rotate: number
 }
 
-/** Three high points, offset so the pattern never looks like a target. */
+/**
+ * Three high points, offset so the pattern never looks like a target.
+ *
+ * `y` is a fraction of one **band**, not of the whole field — see `bandCount`.
+ */
 const PEAKS: Peak[] = [
   { x: 0.22, y: 0.18, spread: 0.46, rings: 7, squash: 0.72, rotate: -18 },
   { x: 0.84, y: 0.52, spread: 0.38, rings: 6, squash: 0.86, rotate: 24 },
   { x: 0.46, y: 0.92, spread: 0.34, rings: 5, squash: 0.64, rotate: -8 },
 ]
+
+/**
+ * A band's height, as a multiple of the field's width.
+ *
+ * Every radius is a fraction of the **width**, so a peak covers ground in
+ * proportion to how wide the sheet is and not at all in proportion to how tall
+ * it is. Three peaks laid out over the whole height therefore thinned out as
+ * the page grew: a six-plate gallery is roughly three screens tall, which left
+ * the three ring clusters stranded in empty ground. The sheet is ruled into
+ * bands of this pitch instead, and the pattern repeats in each, so density
+ * holds however long the list gets.
+ */
+const BAND_ASPECT = 1.35
+
+/**
+ * The most bands drawn, whatever the page length.
+ *
+ * A cost rather than a taste: every ring is an animated SVG node with its own
+ * `strokeDashoffset` draw and its own `stroke` tween, so a band costs 18 of
+ * them. A phone needs about five to reach the bottom of a six-plate gallery;
+ * this leaves headroom without letting an unbounded list run away with the UI
+ * thread. Past the cap the foot of a very long page carries no ink.
+ */
+const MAX_BANDS = 8
+
+/**
+ * Where the bands fall.
+ *
+ * **A band's height comes from the width alone, never from the page height.**
+ * That is the whole point of this function, and getting it wrong is a bug you
+ * can see: dividing the page into N equal bands makes every peak's position a
+ * fraction of the total, so filtering the gallery — which changes how tall the
+ * page is — moved all of the ink at once and the texture appeared to jump.
+ *
+ * With a fixed band height the peaks sit at absolute offsets down the sheet.
+ * Adding or removing plates changes only how many bands are needed to reach
+ * the bottom; every band already on screen keeps its position, and its key, so
+ * it is not even re-rendered. The sheet stays still and the list moves over it,
+ * which is what a printed sheet does.
+ */
+function bandLayout(width: number, height: number) {
+  if (width <= 0 || height <= 0) return { bandHeight: 0, bands: 0 }
+
+  const bandHeight = width * BAND_ASPECT
+  return {
+    bandHeight,
+    bands: Math.min(Math.ceil(height / bandHeight), MAX_BANDS),
+  }
+}
 
 /**
  * Ramanujan's approximation of an ellipse perimeter.
@@ -86,6 +139,12 @@ export function ContourField({
 }: ContourFieldProps) {
   const contour = useContour()
 
+  // The pattern repeats down the field at a fixed pitch rather than stretching
+  // over it, so a change in page height adds or drops a band instead of moving
+  // every ring — see `bandLayout`.
+  const { bandHeight, bands } = bandLayout(width, height)
+  const bandIndices = Array.from({ length: bands }, (_, index) => index)
+
   return (
     // `Motion.View` rather than a plain one, only so the opacity can cross-fade
     // with the stroke. The two carry the same swap — the night sheet holds its
@@ -106,59 +165,76 @@ export function ContourField({
       importantForAccessibility="no-hide-descendants"
     >
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {PEAKS.map((peak, peakIndex) => {
-          const cx = peak.x * width
-          const cy = peak.y * height
+        {bandIndices.map((band) =>
+          PEAKS.map((peak, peakIndex) => {
+            // Every other band is mirrored and counter-rotated, so the repeat
+            // reads as more terrain rather than as a tiled pattern.
+            const flip = band % 2 === 1
+            const cx = (flip ? 1 - peak.x : peak.x) * width
+            const cy = (band + peak.y) * bandHeight
+            const rotate = flip ? -peak.rotate : peak.rotate
 
-          return (
-            <G key={peakIndex} rotation={peak.rotate} origin={`${cx}, ${cy}`}>
-              {Array.from({ length: peak.rings }, (_, ringIndex) => {
-                // Ease the spacing outward: rings crowd near the summit and
-                // open out downslope, the way a real gradient reads.
-                const step = (ringIndex + 1) / peak.rings
-                const radius = peak.spread * width * step ** 1.35
-                const ry = radius * peak.squash
+            return (
+              // One SVG `transform` rather than `rotation` + `origin`. The
+              // two are the same rotation about the same point, but the
+              // `origin` prop is a react-native-svg extension: on web it is
+              // emitted as a `transform-origin` **attribute**, which React 19
+              // rejects as an invalid DOM property and reports on every render.
+              // `rotate(angle cx cy)` carries the centre inside the transform,
+              // so it is plain SVG on web and parses to the same matrix on
+              // native.
+              <G
+                key={`${band}-${peakIndex}`}
+                transform={`rotate(${rotate} ${cx} ${cy})`}
+              >
+                {Array.from({ length: peak.rings }, (_, ringIndex) => {
+                  // Ease the spacing outward: rings crowd near the summit and
+                  // open out downslope, the way a real gradient reads.
+                  const step = (ringIndex + 1) / peak.rings
+                  const radius = peak.spread * width * step ** 1.35
+                  const ry = radius * peak.squash
 
-                // Padded by a few units so rounding can never leave a nick in
-                // the closed outline.
-                const length = Math.ceil(perimeter(radius, ry)) + 4
+                  // Padded by a few units so rounding can never leave a nick in
+                  // the closed outline.
+                  const length = Math.ceil(perimeter(radius, ry)) + 4
 
-                return (
-                  <MotionEllipse
-                    key={ringIndex}
-                    cx={cx}
-                    cy={cy}
-                    rx={radius}
-                    ry={ry}
-                    // The mount seed for the animated `stroke` below. A key
-                    // only animates when it is present at mount, so the static
-                    // prop has to stay even though `animate` now owns it.
-                    stroke={contour.line}
-                    strokeWidth={ringIndex === peak.rings - 1 ? 1.1 : 0.7}
-                    fill="none"
-                    strokeDasharray={[length]}
-                    // Starts fully offset — the ring is drawn but out of view.
-                    strokeDashoffset={length}
-                    animate={{
-                      strokeDashoffset: 0,
-                      stroke: contour.line,
-                    }}
-                    transition={{
-                      strokeDashoffset: withDelay(
-                        ink,
-                        ringDelay(ringIndex, peak.rings),
-                      ),
-                      // No delay, and not `ink`. Every ring changes colour at
-                      // once because one lamp lights the whole sheet, where
-                      // the draw staggers because one pen traces it in order.
-                      stroke: 'lamp',
-                    }}
-                  />
-                )
-              })}
-            </G>
-          )
-        })}
+                  return (
+                    <MotionEllipse
+                      key={ringIndex}
+                      cx={cx}
+                      cy={cy}
+                      rx={radius}
+                      ry={ry}
+                      // The mount seed for the animated `stroke` below. A key
+                      // only animates when it is present at mount, so the static
+                      // prop has to stay even though `animate` now owns it.
+                      stroke={contour.line}
+                      strokeWidth={ringIndex === peak.rings - 1 ? 1.1 : 0.7}
+                      fill="none"
+                      strokeDasharray={[length]}
+                      // Starts fully offset — the ring is drawn but out of view.
+                      strokeDashoffset={length}
+                      animate={{
+                        strokeDashoffset: 0,
+                        stroke: contour.line,
+                      }}
+                      transition={{
+                        strokeDashoffset: withDelay(
+                          ink,
+                          ringDelay(ringIndex, peak.rings),
+                        ),
+                        // No delay, and not `ink`. Every ring changes colour at
+                        // once because one lamp lights the whole sheet, where
+                        // the draw staggers because one pen traces it in order.
+                        stroke: 'lamp',
+                      }}
+                    />
+                  )
+                })}
+              </G>
+            )
+          }),
+        )}
       </Svg>
     </Motion.View>
   )
