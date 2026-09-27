@@ -21,7 +21,16 @@ function ThemedStack() {
           headerShown: false,
           contentStyle: { backgroundColor: theme.colors.surface },
         }}
-      />
+      >
+        {/*
+          The detail mounts in place over the gallery. A native slide moves the
+          screen while the hero measures itself, and the photo FLIP is skipped.
+        */}
+        <Stack.Screen
+          name="trek/[id]"
+          options={{ presentation: 'transparentModal', animation: 'none' }}
+        />
+      </Stack>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>
   )
