@@ -3,11 +3,23 @@ import { MotionConfig } from '@rootnative/inertia'
 import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { View } from 'react-native'
+import { Platform, View } from 'react-native'
 import { FONTS } from '../src/theme/fonts'
 import { ThemeModeProvider } from '../src/theme/mode'
 import { TRANSITIONS } from '../src/theme/motion'
 import { CONTOUR } from '../src/theme/survey'
+
+/**
+ * The detail mounts in place over the gallery on native. A native slide moves
+ * the screen while the hero measures itself, and the photo FLIP is skipped.
+ *
+ * Web keeps the default push. The document scrolls there, so a transparent
+ * modal leaves the gallery in the page flow and the detail renders below it.
+ */
+const DETAIL_OPTIONS =
+  Platform.OS === 'web'
+    ? {}
+    : ({ presentation: 'transparentModal', animation: 'none' } as const)
 
 // Reads the active theme, so it must sit below ThemeModeProvider.
 function ThemedStack() {
@@ -22,14 +34,7 @@ function ThemedStack() {
           contentStyle: { backgroundColor: theme.colors.surface },
         }}
       >
-        {/*
-          The detail mounts in place over the gallery. A native slide moves the
-          screen while the hero measures itself, and the photo FLIP is skipped.
-        */}
-        <Stack.Screen
-          name="trek/[id]"
-          options={{ presentation: 'transparentModal', animation: 'none' }}
-        />
+        <Stack.Screen name="trek/[id]" options={DETAIL_OPTIONS} />
       </Stack>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
     </>

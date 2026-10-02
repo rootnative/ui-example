@@ -27,10 +27,10 @@ import { useTrek } from '../../src/data/useTreks'
  * One route, opened out to the full sheet.
  *
  * The hero carries the same `layoutId` as the photo on the list card, so
- * Inertia FLIPs between the two. Two limits from that API decide the shape
- * here: the FLIP has a one-second TTL, so the hero must mount with the screen
- * rather than after a fetch, and a source and target in different coordinate
- * spaces skip the animation, so the hero sits in normal page flow.
+ * Inertia FLIPs between the two. The gallery stays mounted under this screen,
+ * so the card stays a valid source for as long as the detail is open. A source
+ * and target in different coordinate spaces skip the animation, so the hero
+ * sits in normal page flow.
  *
  * Everything under the hero arrives on `useInView` — see `Reveal`.
  */
