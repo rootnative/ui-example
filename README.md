@@ -45,10 +45,14 @@ https://rootnative.github.io/ui-example/api/v1/treks.json
 ```
 
 Expo copies `public/` into the web export as is, so a push that edits the
-file publishes it with the site. The app reads the hosted file on start and
-imports the same file at build time as the offline fallback, so there is one
+file publishes it with the site. The app fetches the hosted file on start.
+`src/data/useTreks.ts` also imports the same file at build time, so the list
+renders at once and the app has a fallback when the fetch fails. There is one
 copy. Photos, coordinates and extracts are not in the file. The app fetches
 them from Wikipedia with each trek's `wikiTitle`.
+
+GitHub Pages sends `cache-control: max-age=600`, so an edit can take 10
+minutes to reach a device.
 
 ### The record shape
 
@@ -80,7 +84,8 @@ JSON must be added there too.
 1. Edit `public/api/v1/treks.json`.
 2. Keep the field names and types in the table. Nothing checks them.
 3. Remove a field from `verify` only when a local source confirms the value.
-4. Push to `main`. The deploy publishes the file with the site.
+4. Push to `main`. The deploy publishes the file with the site, and the app
+   reads the new data on the next start. A native build needs no new release.
 
 ## Project structure
 
