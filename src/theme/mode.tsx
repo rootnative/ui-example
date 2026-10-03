@@ -1,3 +1,4 @@
+import { mdiResolver } from '@rootnative/components/mdi'
 import {
   ThemeProvider,
   useTheme,
@@ -39,6 +40,7 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
       // export wrote.
       mode={mode}
       onModeChange={setMode}
+      iconResolver={mdiResolver}
     >
       <DocumentPaper />
       {children}
