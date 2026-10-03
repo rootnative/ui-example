@@ -12,6 +12,9 @@ import { CONTOUR } from '../src/theme/survey'
 /**
  * The detail mounts in place over the gallery on native. A native slide moves
  * the screen while the hero measures itself, and the photo FLIP is skipped.
+ * A fade does not move the screen, so the FLIP still plays. The fade also
+ * hides the first frame, where the hero sits at its own rect before the FLIP
+ * moves it back onto the card, and it gives the back press an exit.
  *
  * Web keeps the default push. The document scrolls there, so a transparent
  * modal leaves the gallery in the page flow and the detail renders below it.
@@ -19,7 +22,11 @@ import { CONTOUR } from '../src/theme/survey'
 const DETAIL_OPTIONS =
   Platform.OS === 'web'
     ? {}
-    : ({ presentation: 'transparentModal', animation: 'none' } as const)
+    : ({
+        presentation: 'transparentModal',
+        animation: 'fade',
+        animationDuration: 240,
+      } as const)
 
 // Reads the active theme, so it must sit below ThemeModeProvider.
 function ThemedStack() {

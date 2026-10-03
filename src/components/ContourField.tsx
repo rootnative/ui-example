@@ -1,6 +1,5 @@
 import { Motion } from '@rootnative/inertia'
 import { createMotionSvgComponent } from '@rootnative/inertia-svg'
-import { StyleSheet } from 'react-native'
 import Svg, { Ellipse, G } from 'react-native-svg'
 import { useContour } from '../theme/mode'
 import { ink, ringDelay, withDelay } from '../theme/motion'
@@ -116,8 +115,17 @@ export function ContourField({
     // `initial={false}` starts at the target, because the density belongs to
     // whichever palette is already up on the first frame.
     <Motion.View
-      // `pointerEvents` belongs in `style`; the prop form warns on every render.
-      style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
+      // Sized to the field, not to the parent: the parent clips a field that
+      // is taller than the page. `pointerEvents` belongs in `style`; the prop
+      // form warns on every render.
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width,
+        height,
+        pointerEvents: 'none',
+      }}
       initial={false}
       animate={{ opacity }}
       transition="lamp"

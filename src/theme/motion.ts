@@ -13,12 +13,16 @@ import type { TransitionConfig } from '@rootnative/inertia'
  * Nothing bounces. Paper has weight, and an overshoot would read as Material.
  */
 
-/** A plate settling onto the desk: it arrives and stops, it does not wobble. */
+/**
+ * A plate settling onto the desk: it arrives and stops, it does not wobble.
+ * Damped just under critical, so it settles in about 350ms with no visible
+ * overshoot. A heavier plate felt slow next to the finger that moved it.
+ */
 export const plate = {
   type: 'spring',
-  tension: 180,
-  friction: 26,
-  mass: 1.4,
+  tension: 260,
+  friction: 30,
+  mass: 1,
 } satisfies TransitionConfig
 
 /** A pen stroke. Long enough to read as drawing, not as wiping. */
@@ -43,6 +47,18 @@ const press: TransitionConfig = {
 }
 
 /**
+ * The photo on a plate opening out into the page. Timing, not a spring: the
+ * FLIP scales the image, and an overshoot would show the photo stretch past
+ * its own frame. The curve starts fast and lands slowly, so the eye follows
+ * the photo to where it stops.
+ */
+export const hero = {
+  type: 'timing',
+  duration: 420,
+  easing: cubicBezier(0.2, 0, 0, 1),
+} satisfies TransitionConfig
+
+/**
  * The lamp coming on. Timing, because nothing moves — the sheet only changes
  * colour, and a spring would wobble a value that crosses between two colours.
  * Longer than `press`, so the button answers the finger before the sheet does.
@@ -53,9 +69,9 @@ const lamp = {
   easing: cubicBezier(0.4, 0, 0.2, 1),
 } satisfies TransitionConfig
 
-export const TRANSITIONS = { plate, ink, fold, press, lamp }
+export const TRANSITIONS = { plate, ink, fold, press, lamp, hero }
 
-/** Narrows `transition="…"` to these five names, so a typo fails to compile. */
+/** Narrows `transition="…"` to these six names, so a typo fails to compile. */
 declare module '@rootnative/inertia' {
   interface RegisteredTransitions {
     plate: true
@@ -63,6 +79,7 @@ declare module '@rootnative/inertia' {
     fold: true
     press: true
     lamp: true
+    hero: true
   }
 }
 

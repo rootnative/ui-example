@@ -31,6 +31,20 @@ interface TrekCardProps {
 /** Resting lift of a plate above the sheet, in points. */
 const LIFT = 3
 
+/**
+ * The photo height on the plate and on the detail hero. One height for both,
+ * so the FLIP between them is a pure move. A 160pt photo grown into a 240pt
+ * hero is a scale, and a scale stretches the image on the way.
+ */
+export const PHOTO_HEIGHT = 200
+
+/**
+ * The plate photo is a FLIP source, never a target. A plate that a filter
+ * brings back within a second of its exit would otherwise take its own old
+ * rect and fly in from where it left.
+ */
+const SOURCE_ONLY = { type: 'no-animation' } as const
+
 export function TrekCard({ trek, loading, onPress }: TrekCardProps) {
   const theme = useTheme()
 
@@ -44,15 +58,15 @@ export function TrekCard({ trek, loading, onPress }: TrekCardProps) {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${trek.name}, ${trek.subtitle}`}
-      initial={{ opacity: 0, translateY: 14 }}
+      initial={{ opacity: 0, translateY: 12 }}
       animate={{ opacity: 1, translateY: 0 }}
-      // A filtered-out plate rises the same 14pt it settled through, so
+      // A filtered-out plate rises the same 12pt it settled through, so
       // removal reads as the reverse of the deal.
-      exit={{ opacity: 0, translateY: -14 }}
+      exit={{ opacity: 0, translateY: -12 }}
       // No `delay`: the `<Stagger>` around the list adds it, so a reordering
       // filter re-derives every delay instead of reading a stale `index` prop.
       transition={{
-        opacity: { type: 'timing', duration: 280 },
+        opacity: { type: 'timing', duration: 200 },
         translateY: plate,
       }}
       layout="plate"
@@ -77,29 +91,38 @@ export function TrekCard({ trek, loading, onPress }: TrekCardProps) {
         }}
       >
         {/*
-          Three states, not two: without the skeleton every plate jumps 160pt
+          Three states, not two: without the skeleton every plate jumps 200pt
           taller the moment Wikipedia answers. `animated={false}` because up to
           six of these pulse at once, which reads as flicker.
         */}
         {photo ? (
-          <Card.Media height={160}>
+          <Card.Media height={PHOTO_HEIGHT}>
             {/*
-              `layoutId` pairs this with the detail hero: touching the plate
-              FLIPs this exact image into the next screen.
+              The fade sits on a wrapper: the image's own transition is
+              `SOURCE_ONLY`, and the FLIP reads that one.
             */}
-            <Motion.Image
-              layoutId={`trek-photo-${trek.id}`}
-              source={{ uri: photo }}
-              resizeMode="cover"
+            <Motion.View
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition="fold"
               style={{ width: '100%', height: '100%' }}
-              accessibilityIgnoresInvertColors
-            />
+            >
+              {/*
+                `layoutId` pairs this with the detail hero: touching the plate
+                FLIPs this exact image into the next screen.
+              */}
+              <Motion.Image
+                layoutId={`trek-photo-${trek.id}`}
+                source={{ uri: photo }}
+                resizeMode="cover"
+                transition={SOURCE_ONLY}
+                style={{ width: '100%', height: '100%' }}
+                accessibilityIgnoresInvertColors
+              />
+            </Motion.View>
           </Card.Media>
         ) : loading ? (
-          <Card.Media height={160}>
+          <Card.Media height={PHOTO_HEIGHT}>
             <Skeleton
               width="100%"
               height="100%"

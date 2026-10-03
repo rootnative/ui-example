@@ -1,27 +1,14 @@
 import { useThemeMode } from '@rootnative/core'
-import { Motion, useInterpolatedStyle } from '@rootnative/inertia'
-import type { SharedValue } from '@rootnative/inertia/reanimated'
 import { useState } from 'react'
-import {
-  Platform,
-  useWindowDimensions,
-  View,
-  type LayoutChangeEvent,
-} from 'react-native'
+import { Platform, View } from 'react-native'
 import { ContourField } from './ContourField'
 
-/** True on web, where the document scrolls instead of a `ScrollView`. */
-const DOCUMENT_SCROLL = Platform.OS === 'web'
-
 /**
- * How far the ink runs past the content, in points, on native. The field is
- * sized from the scroll content, which starts below the bar, so it must carry
- * on up behind it. Overshooting is free, and the tallest bar is 152.
- *
- * A constant rather than the measured height: a `large` bar collapses from 152
- * to 64, so an `onLayout` would re-render the field on every frame.
+ * How far the ink runs above the content, in points. iOS bounces the scroller
+ * past its top edge, and bare ground there reads as a tear in the sheet. Web
+ * and Android do not bounce.
  */
-const HEADER_OVERSHOOT = 160
+const OVERSCROLL_BLEED = Platform.OS === 'ios' ? 320 : 0
 
 /** The measured size of a screen's scroll content. */
 export interface SheetContent {
@@ -29,106 +16,51 @@ export interface SheetContent {
   height: number
 }
 
-interface SheetBackdropProps {
-  /** From the screen's `onContentSize`. Only read on native. */
-  content: SheetContent
-  /** From `usePageScroll()`. Only read on native. */
-  scrollY: SharedValue<number>
-}
-
 /**
  * The contour texture that turns a screen into a map sheet.
  *
- * Render it as the first child of `Layout`, before the `AppBar`. It positions
- * itself, it is painted behind everything, and it takes no space.
+ * `PageScroll` renders it as the first child of the scroll content, so it
+ * moves with the plates on the scroll itself. Nothing drives it from a scroll
+ * value, so it cannot lag a frame behind the content. The bar floats over the
+ * content, so the ink runs behind the bar as well.
  *
- * The ink spans the window, not the reading column, and it runs behind the
- * bar. Without that second part a transparent bar over bare ground looks
- * solid, and the fade in `useSheetHeaderSurface` has nothing to reveal.
- *
- * The two platforms reach it differently, because the bar sits in a different
- * place on each. On web `Layout`'s box is the page, bar included, so the field
- * fills a measured box exactly. On native the bar is a sibling above the
- * scroller, so the field is lifted out of the scroller to cover the screen and
- * translated by the scroll offset instead.
+ * The field only grows. A filter that shortens the page clips the ink at the
+ * new bottom, and the rings above that line stay exactly where they were. A
+ * field that shrank with the page would unmount its lower bands, and draw them
+ * again when the page grew back.
  */
-export function SheetBackdrop({ content, scrollY }: SheetBackdropProps) {
+export function SheetBackdrop({ content }: { content: SheetContent }) {
   const { scheme } = useThemeMode()
-  const { width: windowWidth } = useWindowDimensions()
-
-  // Web measures its own box; native is told the content size.
-  const [page, setPage] = useState({ width: 0, height: 0 })
-
-  // The field rises as the page falls, one point for one point.
-  //
-  // Declarative rather than `useTransform(() => -scrollY.value)`: the
-  // Reanimated Babel plugin does not lift an arbitrary callback into a
-  // worklet, so that arrow reaches the UI thread as a plain function and an
-  // iOS release build dies on it. `extrapolate: 'extend'` because the default
-  // `'clamp'` would pin the sheet after the first point of scroll.
-  const travel = useInterpolatedStyle(
-    scrollY,
-    { translateY: [0, -1] },
-    { inputRange: [0, 1], extrapolate: 'extend' },
-  )
-
-  function handleLayout(event: LayoutChangeEvent) {
-    const { width, height } = event.nativeEvent.layout
-    setPage((current) =>
-      current.width === width && current.height === height
-        ? current
-        : { width, height },
-    )
-  }
+  const fieldHeight = content.height + OVERSCROLL_BLEED
+  const [drawnHeight, setDrawnHeight] = useState(fieldHeight)
+  if (fieldHeight > drawnHeight) setDrawnHeight(fieldHeight)
 
   // The night accent is brighter than ink on paper, so the same value would
   // shout. `ContourField` animates this rather than setting it, so the density
   // crosses over with the ink colour instead of stepping.
   const opacity = scheme === 'dark' ? 0.24 : 0.34
 
-  if (DOCUMENT_SCROLL) {
-    return (
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: 'none',
-        }}
-        onLayout={handleLayout}
-      >
-        {page.width > 0 ? (
-          <ContourField
-            width={page.width}
-            height={page.height}
-            opacity={opacity}
-          />
-        ) : null}
-      </View>
-    )
-  }
-
-  if (content.height <= 0) return null
-
-  const height = content.height + HEADER_OVERSHOOT
+  if (content.width <= 0 || content.height <= 0) return null
 
   return (
-    <Motion.View
-      style={[
-        {
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: windowWidth,
-          height,
-          pointerEvents: 'none',
-        },
-        travel,
-      ]}
+    <View
+      style={{
+        position: 'absolute',
+        top: -OVERSCROLL_BLEED,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        // The field can be taller than the page. On web an overflow would
+        // lengthen the document.
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
     >
-      <ContourField width={windowWidth} height={height} opacity={opacity} />
-    </Motion.View>
+      <ContourField
+        width={content.width}
+        height={drawnHeight}
+        opacity={opacity}
+      />
+    </View>
   )
 }

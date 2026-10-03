@@ -7,9 +7,14 @@ import {
 import type { SharedValue } from '@rootnative/inertia/reanimated'
 import { useIsFocused, useRoute } from 'expo-router'
 import type { ReactNode } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Platform, View, type LayoutChangeEvent } from 'react-native'
-import type { SheetContentStyle } from './sheetLayout'
+import { SheetBackdrop, type SheetContent } from './Sheet'
+import {
+  sheetHeaderBoxStyle,
+  type SheetContentStyle,
+  type SheetHeaderHeights,
+} from './sheetLayout'
 
 /** True on web, where the document scrolls instead of a `ScrollView`. */
 export const DOCUMENT_SCROLL = Platform.OS === 'web'
@@ -110,9 +115,18 @@ type PageScrollProps = {
   /** The result of `usePageScroll()` on the same screen. */
   scroll: ReturnType<typeof usePageScroll>
   /** The column, from `useSheetContentStyle()`. */
-  contentStyle: ReturnType<typeof import('./sheetLayout').useSheetContentStyle>
-  /** Reports the **scrollable** size, for `SheetBackdrop`. */
-  onContentSize: (width: number, height: number) => void
+  contentStyle: SheetContentStyle
+  /** The `AppBar`. It floats over the content — see `sheetHeaderBoxStyle`. */
+  header: ReactNode
+  /** From `useSheetHeaderHeights()` with the bar's variant. */
+  headerHeights: SheetHeaderHeights
+  /**
+   * The least height of the scroll content. A filter that shortens the page
+   * below the current offset makes the scroller jump to its new end. A screen
+   * sets this to the offset plus one window before it changes the content, so
+   * the scroller can stay where it is.
+   */
+  minHeight?: number
   children: ReactNode
 }
 
@@ -121,44 +135,85 @@ type PageScrollProps = {
  * scrolls the document so the browser scroll bar spans the window, and
  * Find-in-page and the `Home` / `End` / `PageDown` keys reach the whole page.
  *
- * `onContentSize` reports the scrollable height on both, which is what
- * `SheetBackdrop` draws to. On web the content view is the content, so its own
- * `onLayout` measures it.
+ * The bar floats over the content on both, and the column starts below the
+ * expanded bar. The contour sheet is the first child of the content, so it
+ * scrolls with the plates — see `SheetBackdrop`.
  */
 export function PageScroll({
   scroll,
   contentStyle,
-  onContentSize,
+  header,
+  headerHeights,
+  minHeight,
   children,
 }: PageScrollProps) {
+  const [content, setContent] = useState<SheetContent>({ width: 0, height: 0 })
+
+  function handleContentSize(width: number, height: number) {
+    setContent((current) =>
+      current.width === width && current.height === height
+        ? current
+        : { width, height },
+    )
+  }
+
   function handleLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout
-    onContentSize(width, height)
+    handleContentSize(width, height)
   }
+
+  const column = (
+    <View
+      style={[
+        contentStyle,
+        { paddingTop: contentStyle.padding + headerHeights.expanded },
+      ]}
+    >
+      {children}
+    </View>
+  )
+
+  const headerBox = (
+    <View style={sheetHeaderBoxStyle(headerHeights)}>{header}</View>
+  )
 
   if (DOCUMENT_SCROLL) {
     return (
-      // `flexGrow` makes the measured box the whole page rather than the
-      // plates alone, so the contour field reaches the bottom of a page that
-      // is shorter than the window.
-      <View style={[contentStyle, { flexGrow: 1 }]} onLayout={handleLayout}>
-        {children}
-      </View>
+      <>
+        {headerBox}
+        {/*
+          `flexGrow` makes the measured box the whole page rather than the
+          plates alone, so the contour field reaches the bottom of a page that
+          is shorter than the window.
+        */}
+        <View style={{ flexGrow: 1, minHeight }} onLayout={handleLayout}>
+          <SheetBackdrop content={content} />
+          {column}
+        </View>
+      </>
     )
   }
 
   return (
-    <Motion.ScrollView
-      onScroll={scroll.onScroll}
-      scrollEventThrottle={16}
-      // No background. The contour field is a child of `Layout`, above this
-      // scroller, so any colour here paints over it and the sheet vanishes
-      // below the bar. `Layout` already paints the ground.
-      style={{ flex: 1 }}
-      contentContainerStyle={[contentStyle, { flexGrow: 1 }]}
-      onContentSizeChange={onContentSize}
-    >
-      {children}
-    </Motion.ScrollView>
+    // The box that the header is absolute in. `Layout` pads its top by the
+    // safe area, and an absolute child ignores that padding.
+    <View style={{ flex: 1 }}>
+      <Motion.ScrollView
+        onScroll={scroll.onScroll}
+        scrollEventThrottle={16}
+        // No background. `Layout` already paints the ground, and the contour
+        // field is inside the content.
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, minHeight }}
+        // The track starts under the collapsed bar, which is where the content
+        // shows once the page moves.
+        scrollIndicatorInsets={{ top: headerHeights.collapsed }}
+        onContentSizeChange={handleContentSize}
+      >
+        <SheetBackdrop content={content} />
+        {column}
+      </Motion.ScrollView>
+      {headerBox}
+    </View>
   )
 }

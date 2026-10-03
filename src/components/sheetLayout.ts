@@ -41,30 +41,69 @@ export type SheetContentStyle = {
   alignSelf: 'center'
 }
 
-/**
- * The bar, exactly as a phone draws it: edge to edge.
- *
- * The plates stop at `SHEET_MAX_WIDTH`, the bar does not — it is chrome, so
- * both platforms draw the same header. The trade is deliberate: the title no
- * longer lines up with the first plate, but the header no longer floats as a
- * 720pt band on a bare desk.
- */
-export function useSheetHeaderStyle(): ViewStyle {
-  return { width: '100%', ...STICKY_HEADER }
+/** The heights a screen lays its content around, in points. */
+export interface SheetHeaderHeights {
+  /** The bar at rest. The content starts below this line. */
+  expanded: number
+  /** The bar once it has collapsed. The scroll indicator starts here. */
+  collapsed: number
 }
 
 /**
- * Pins the bar while the page scrolls under it. Web only: the document
- * scrolls there, so a sibling of the content would scroll away with it.
- *
- * `position: 'sticky'` is a react-native-web value, not a React Native one, so
- * the type needs the cast. Sticky is capped by the containing block, so every
- * box between `#root` and this one must grow with the page — see `app/+html.tsx`.
+ * The bar heights, from the theme's `topAppBar` tokens. A `small` bar does not
+ * collapse, so both values are the same.
  */
-const STICKY_HEADER: ViewStyle =
-  Platform.OS === 'web'
-    ? ({ position: 'sticky', top: 0, zIndex: 1 } as unknown as ViewStyle)
-    : {}
+export function useSheetHeaderHeights(
+  variant: 'small' | 'large',
+): SheetHeaderHeights {
+  const theme = useTheme()
+  const collapsed = theme.topAppBar?.smallContainerHeight ?? 64
+  const expanded =
+    variant === 'large'
+      ? (theme.topAppBar?.largeContainerHeight ?? 152)
+      : collapsed
+
+  return { expanded, collapsed }
+}
+
+/**
+ * The box that holds the bar over the page. The bar floats over the content,
+ * not above it in the flex column.
+ *
+ * A collapsing bar animates its real `height`. In the column, that resized the
+ * scroller on every frame of the collapse: the content moved at twice the
+ * finger's speed, the contour sheet slid against the plates, and the scroll
+ * indicator lost its track. Over the content, the bar changes size and nothing
+ * else moves.
+ *
+ * Native pins the box with `position: 'absolute'`. Web scrolls the document,
+ * so it uses `sticky` with a negative margin of the same height, which takes
+ * the box out of the flow. `sticky` is a react-native-web value, so the type
+ * needs the cast. Sticky is capped by the containing block, so every box
+ * between `#root` and this one must grow with the page — see `app/+html.tsx`.
+ *
+ * `box-none` because on web the box keeps the expanded height: the part below
+ * a collapsed bar must pass touches to the plates under it.
+ */
+export function sheetHeaderBoxStyle(heights: SheetHeaderHeights): ViewStyle {
+  return Platform.OS === 'web'
+    ? ({
+        position: 'sticky',
+        top: 0,
+        height: heights.expanded,
+        marginBottom: -heights.expanded,
+        zIndex: 1,
+        pointerEvents: 'box-none',
+      } as unknown as ViewStyle)
+    : {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1,
+        pointerEvents: 'box-none',
+      }
+}
 
 /**
  * How a screen's root fills the window. `flex: 1` fixes the root at one window,

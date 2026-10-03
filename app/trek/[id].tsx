@@ -8,20 +8,20 @@ import {
   Typography,
 } from '@rootnative/components'
 import { useTheme } from '@rootnative/core'
-import { Motion, useInView, useInterpolatedStyle } from '@rootnative/inertia'
+import { Motion, Stagger } from '@rootnative/inertia'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useRef, useState, type ReactNode } from 'react'
-import { View } from 'react-native'
+import type { ReactNode } from 'react'
 import { PageScroll, usePageScroll } from '../../src/components/pageScroll'
-import { SheetBackdrop } from '../../src/components/Sheet'
 import {
   PAGE_FILL,
   useSheetContentStyle,
-  useSheetHeaderStyle,
+  useSheetHeaderHeights,
   useSheetHeaderSurface,
 } from '../../src/components/sheetLayout'
+import { PHOTO_HEIGHT } from '../../src/components/TrekCard'
 import { elevationGain, gradient } from '../../src/data/types'
 import { useTrek } from '../../src/data/useTreks'
+import { plate } from '../../src/theme/motion'
 
 /**
  * One route, opened out to the full sheet.
@@ -32,28 +32,17 @@ import { useTrek } from '../../src/data/useTreks'
  * and target in different coordinate spaces skip the animation, so the hero
  * sits in normal page flow.
  *
- * Everything under the hero arrives on `useInView` — see `Reveal`.
+ * Everything under the hero rises in after it, in reading order — see `Rise`.
  */
 export default function TrekDetailScreen() {
   const theme = useTheme()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { trek, loading } = useTrek(id)
   const contentStyle = useSheetContentStyle(20)
-  const headerStyle = useSheetHeaderStyle()
-  const [content, setContent] = useState({ width: 0, height: 0 })
+  const headerHeights = useSheetHeaderHeights('small')
   // This bar does not collapse, but the hook still owns which thing scrolls.
   const scroll = usePageScroll()
   const headerSurface = useSheetHeaderSurface(scroll.scrollY)
-
-  // The scrollable size rather than the visible box, so the texture covers
-  // the whole page instead of the first screen.
-  function handleContentSize(width: number, height: number) {
-    setContent((current) =>
-      current.width === width && current.height === height
-        ? current
-        : { width, height },
-    )
-  }
 
   // The list is local data, so a miss means a bad id rather than a slow
   // network. Enrichment is still in flight on a cold deep link.
@@ -63,22 +52,27 @@ export default function TrekDetailScreen() {
         edges={['top']}
         style={{ backgroundColor: theme.colors.surface, ...PAGE_FILL }}
       >
-        <AppBar
-          title="Off the sheet"
-          canGoBack
-          onBackPress={router.back}
-          style={[headerStyle, headerSurface]}
-          containerColor="transparent"
-        />
-        {/* The same column as the page it replaces, so the margin matches. */}
-        <Column style={contentStyle}>
+        <PageScroll
+          scroll={scroll}
+          contentStyle={contentStyle}
+          headerHeights={headerHeights}
+          header={
+            <AppBar
+              title="Off the sheet"
+              canGoBack
+              onBackPress={router.back}
+              style={headerSurface}
+              containerColor="transparent"
+            />
+          }
+        >
           <Typography
             variant="bodyMedium"
             color={theme.colors.onSurfaceVariant}
           >
             {loading ? 'Locating the plate…' : 'No route carries this number.'}
           </Typography>
-        </Column>
+        </PageScroll>
       </Layout>
     )
   }
@@ -86,127 +80,143 @@ export default function TrekDetailScreen() {
   const photo = trek.enrichment?.imageUrl
   const { lat, lon, extract } = trek.enrichment ?? {}
 
-  // `useInView` measures its element once, so a change in the height above one
-  // leaves its trigger point stale, and the documented fix is to remount. The
-  // hero is the only thing here that can change height: a trek with no photo
-  // drops the whole 240pt box once the fetch settles.
-  const heroState = photo ? 'photo' : loading ? 'pending' : 'none'
-
   return (
     <Layout
       edges={['top', 'bottom']}
       style={{ backgroundColor: theme.colors.surface, ...PAGE_FILL }}
     >
-      <SheetBackdrop content={content} scrollY={scroll.scrollY} />
-
-      <AppBar
-        title={trek.name}
-        canGoBack
-        onBackPress={router.back}
-        style={[headerStyle, headerSurface]}
-        containerColor="transparent"
-      />
-
       <PageScroll
         scroll={scroll}
         contentStyle={contentStyle}
-        onContentSize={handleContentSize}
+        headerHeights={headerHeights}
+        header={
+          <AppBar
+            title={trek.name}
+            canGoBack
+            onBackPress={router.back}
+            style={headerSurface}
+            containerColor="transparent"
+          />
+        }
       >
         {/*
-          The hero holds its 240pt box while the fetch is in flight, so the
-          stat block does not jump down when the photo lands. The pulse stays
-          on here: one skeleton cannot compete with itself.
+          The hero holds its box while the fetch is in flight, so the stat
+          block does not jump down when the photo lands. The pulse stays on
+          here: one skeleton cannot compete with itself.
         */}
         {photo ? (
           <Motion.Image
             layoutId={`trek-photo-${trek.id}`}
             source={{ uri: photo }}
             resizeMode="cover"
+            transition="hero"
             style={{
               width: '100%',
-              height: 240,
+              height: PHOTO_HEIGHT,
               borderWidth: 1,
               borderColor: theme.colors.outline,
             }}
             accessibilityIgnoresInvertColors
           />
         ) : loading ? (
-          <Skeleton width="100%" height={240} shape="rectangle" />
+          <Skeleton width="100%" height={PHOTO_HEIGHT} shape="rectangle" />
         ) : null}
 
-        <Column gap="xs">
-          <Typography variant="labelSmall" color={theme.colors.primary}>
-            {trek.sheet.toUpperCase()} · {trek.district.toUpperCase()}
-          </Typography>
-          <Typography variant="bodyLarge">{trek.subtitle}</Typography>
-        </Column>
+        {/*
+          `Stagger` gives each block its own delay, in reading order. The first
+          block waits for the hero to cover most of its flight.
+        */}
+        <Stagger interval={RISE_INTERVAL} delay={RISE_DELAY}>
+          <Rise>
+            <Column gap="xs">
+              <Typography variant="labelSmall" color={theme.colors.primary}>
+                {trek.sheet.toUpperCase()} · {trek.district.toUpperCase()}
+              </Typography>
+              <Typography variant="bodyLarge">{trek.subtitle}</Typography>
+            </Column>
+          </Rise>
 
-        <Divider />
+          <Rise>
+            <Divider />
+          </Rise>
 
-        <Reveal key={`stats-${heroState}`}>
-          <Column gap="md">
-            <Row gap="lg" wrap>
-              <Field label="HEIGHT" value={`${trek.elevationM} m`} />
-              <Field label="GAIN" value={`${elevationGain(trek)} m`} />
-              <Field label="GRADIENT" value={`${gradient(trek).toFixed(1)}%`} />
-            </Row>
-            <Row gap="lg" wrap>
-              <Field label="DISTANCE" value={`${trek.distanceKm} km`} />
-              <Field label="ASCENT" value={`${trek.ascentHours} h`} />
-              <Field label="WATER" value={`${trek.waterPoints} points`} />
-            </Row>
-            <Row gap="lg" wrap>
-              <Field label="BASE" value={trek.baseVillage} />
-              <Field label="GRADE" value={trek.difficulty} />
-              <Field label="SEASON" value={trek.season.join(', ')} />
-            </Row>
+          <Rise>
+            <Column gap="md">
+              <Row gap="lg" wrap>
+                <Field label="HEIGHT" value={`${trek.elevationM} m`} />
+                <Field label="GAIN" value={`${elevationGain(trek)} m`} />
+                <Field
+                  label="GRADIENT"
+                  value={`${gradient(trek).toFixed(1)}%`}
+                />
+              </Row>
+              <Row gap="lg" wrap>
+                <Field label="DISTANCE" value={`${trek.distanceKm} km`} />
+                <Field label="ASCENT" value={`${trek.ascentHours} h`} />
+                <Field label="WATER" value={`${trek.waterPoints} points`} />
+              </Row>
+              <Row gap="lg" wrap>
+                <Field label="BASE" value={trek.baseVillage} />
+                <Field label="GRADE" value={trek.difficulty} />
+                <Field label="SEASON" value={trek.season.join(', ')} />
+              </Row>
 
-            {lat !== undefined && lon !== undefined ? (
-              <Field
-                label="GRID REFERENCE"
-                value={`${lat.toFixed(4)}° N  ${lon.toFixed(4)}° E`}
-              />
-            ) : null}
-          </Column>
-        </Reveal>
+              {lat !== undefined && lon !== undefined ? (
+                <Field
+                  label="GRID REFERENCE"
+                  value={`${lat.toFixed(4)}° N  ${lon.toFixed(4)}° E`}
+                />
+              ) : null}
+            </Column>
+          </Rise>
 
-        <Divider />
+          <Rise>
+            <Divider />
+          </Rise>
 
-        {extract ? (
-          <Reveal key={`extract-${heroState}`}>
-            <Typography variant="bodyMedium">{extract}</Typography>
-          </Reveal>
-        ) : null}
+          {extract ? (
+            <Rise>
+              <Typography variant="bodyMedium">{extract}</Typography>
+            </Rise>
+          ) : null}
 
-        <Reveal key={`note-${heroState}`}>
-          <Typography variant="bodySmall" color={theme.colors.onSurfaceVariant}>
-            {trek.note}
-          </Typography>
-        </Reveal>
+          <Rise>
+            <Typography
+              variant="bodySmall"
+              color={theme.colors.onSurfaceVariant}
+            >
+              {trek.note}
+            </Typography>
+          </Rise>
+        </Stagger>
       </PageScroll>
     </Layout>
   )
 }
 
+/** Delay before the first block rises, in ms. */
+const RISE_DELAY = 160
+
+/** Gap between two blocks, in ms. Short, so the page reads as one movement. */
+const RISE_INTERVAL = 40
+
 /**
- * Fades a block in when it scrolls onto the screen, not when the page mounts.
- * The hero is 240pt, so on a phone none of these blocks is on the first screen.
+ * One block of the page, rising into place on mount on the `plate` spring.
  *
- * `useInView` works on both halves of this app's split scrolling. Web uses
- * `IntersectionObserver` and needs only the ref; native needs the element
- * inside the `Motion.ScrollView` that `PageScroll` renders there.
+ * On mount, not on scroll: a block that waits for the viewport arrives at a
+ * time the reader cannot predict, and a block that is half on screen fades in
+ * late behind the ones above it.
  */
-function Reveal({ children }: { children: ReactNode }) {
-  const ref = useRef<View>(null)
-  const inView = useInView(ref, { amount: 0.15, margin: -32 })
-
-  const style = useInterpolatedStyle(inView, {
-    opacity: [0, 1],
-    translateY: [16, 0],
-  })
-
+function Rise({ children }: { children: ReactNode }) {
   return (
-    <Motion.View ref={ref} style={style}>
+    <Motion.View
+      initial={{ opacity: 0, translateY: 12 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{
+        opacity: { type: 'timing', duration: 220 },
+        translateY: plate,
+      }}
+    >
       {children}
     </Motion.View>
   )
