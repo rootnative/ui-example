@@ -174,7 +174,12 @@ export function PageScroll({
   )
 
   const headerBox = (
-    <View style={sheetHeaderBoxStyle(headerHeights)}>{header}</View>
+    // `collapsable={false}`: the box paints nothing, so Fabric flattens it out
+    // of the native tree, and its `zIndex` goes with it. The scroller then
+    // takes every touch on the bar, the toggle included.
+    <View collapsable={false} style={sheetHeaderBoxStyle(headerHeights)}>
+      {header}
+    </View>
   )
 
   if (DOCUMENT_SCROLL) {

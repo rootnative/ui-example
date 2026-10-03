@@ -15,49 +15,71 @@ import { Platform, StyleSheet, View } from 'react-native'
 export function LampToggle() {
   const { scheme, setMode } = useThemeMode()
   const dark = scheme === 'dark'
+  const label = dark ? 'Switch to the day sheet' : 'Switch to the night sheet'
+  const toggle = () => setMode(dark ? 'light' : 'dark')
 
   return (
     <View>
-      {/* The day face carries the press, and the only label in the pair. */}
-      <Motion.View
-        initial={false}
-        animate={{ rotate: dark ? 90 : 0, opacity: dark ? 0 : 1 }}
-        transition="lamp"
-      >
-        <IconButton
-          icon="white-balance-sunny"
-          variant="outlined"
-          accessibilityLabel={
-            dark ? 'Switch to the day sheet' : 'Switch to the night sheet'
-          }
-          onPress={() => setMode(dark ? 'light' : 'dark')}
-        />
-      </Motion.View>
-
-      {/*
-        The night face is decoration: a second rendering of the same control
-        would announce the toggle twice and offer a second target. It starts at
-        -90° so it arrives upright exactly as the sun leaves.
-      */}
-      <Motion.View
-        // The style key alone leaves this overlay touchable on iOS, where it
-        // swallows every press. The prop is native-only because react-native-web
-        // warns that it is deprecated.
-        {...Platform.select({ web: null, default: { pointerEvents: 'none' } })}
-        style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]}
-        initial={false}
-        animate={{ rotate: dark ? 0 : -90, opacity: dark ? 1 : 0 }}
-        transition="lamp"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      >
-        <IconButton
-          icon="weather-night"
-          variant="outlined"
-          // Required by the type, never announced: the face above is hidden.
-          accessibilityLabel="Night sheet icon, decorative"
-        />
-      </Motion.View>
+      <Face
+        icon="white-balance-sunny"
+        shown={!dark}
+        rotate={dark ? 90 : 0}
+        label={label}
+        onPress={toggle}
+      />
+      {/* It starts at -90° so it arrives upright exactly as the sun leaves. */}
+      <Face
+        icon="weather-night"
+        shown={dark}
+        rotate={dark ? 0 : -90}
+        label={label}
+        onPress={toggle}
+        overlay
+      />
     </View>
+  )
+}
+
+interface FaceProps {
+  icon: string
+  shown: boolean
+  rotate: number
+  label: string
+  onPress: () => void
+  /** Stacks this face over the other one. */
+  overlay?: boolean
+}
+
+/**
+ * One face of the switch. The shown face carries the press and the label.
+ *
+ * iOS does not deliver a touch to a view at opacity 0, so the press cannot
+ * stay on one face: in night mode the day face is invisible and takes no
+ * touch. The hidden face is also left out of the accessibility tree, or a
+ * screen reader announces the toggle twice.
+ */
+function Face({ icon, shown, rotate, label, onPress, overlay }: FaceProps) {
+  const pointerEvents = shown ? 'auto' : 'none'
+
+  return (
+    <Motion.View
+      // The style key alone leaves a hidden overlay touchable on iOS, where it
+      // swallows every press. The prop is native-only because react-native-web
+      // warns that it is deprecated.
+      {...Platform.select({ web: null, default: { pointerEvents } })}
+      style={[overlay ? StyleSheet.absoluteFill : null, { pointerEvents }]}
+      initial={false}
+      animate={{ rotate, opacity: shown ? 1 : 0 }}
+      transition="lamp"
+      accessibilityElementsHidden={!shown}
+      importantForAccessibility={shown ? 'auto' : 'no-hide-descendants'}
+    >
+      <IconButton
+        icon={icon}
+        variant="outlined"
+        accessibilityLabel={label}
+        onPress={onPress}
+      />
+    </Motion.View>
   )
 }

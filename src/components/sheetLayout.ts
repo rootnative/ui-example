@@ -95,14 +95,7 @@ export function sheetHeaderBoxStyle(heights: SheetHeaderHeights): ViewStyle {
         zIndex: 1,
         pointerEvents: 'box-none',
       } as unknown as ViewStyle)
-    : {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 1,
-        pointerEvents: 'box-none',
-      }
+    : { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 }
 }
 
 /**
