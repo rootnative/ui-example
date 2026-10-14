@@ -12,6 +12,12 @@ export interface Trek {
   sheet: string
   district: string
   elevationM: number
+  /**
+   * Summit position in decimal degrees, from the Wikipedia page. Optional
+   * because the hosted copy can lag the bundled one.
+   */
+  lat?: number
+  lon?: number
   baseVillage: string
   baseElevationM: number
   distanceKm: number
@@ -38,6 +44,16 @@ export interface TrekEnrichment {
 /** A trek merged with whatever enrichment succeeded. */
 export interface EnrichedTrek extends Trek {
   enrichment?: TrekEnrichment
+}
+
+/**
+ * Where the summit sits. The authored position wins; the Wikipedia one fills
+ * in for a record that has none.
+ */
+export function position(trek: EnrichedTrek) {
+  const lat = trek.lat ?? trek.enrichment?.lat
+  const lon = trek.lon ?? trek.enrichment?.lon
+  return lat !== undefined && lon !== undefined ? { lat, lon } : undefined
 }
 
 /** Total climb from the base village to the summit, in metres. */

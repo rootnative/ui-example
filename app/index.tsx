@@ -1,4 +1,11 @@
-import { AppBar, Column, Layout, Typography } from '@rootnative/components'
+import {
+  AppBar,
+  Column,
+  IconButton,
+  Layout,
+  Row,
+  Typography,
+} from '@rootnative/components'
 import { useTheme } from '@rootnative/core'
 import { Presence, Stagger } from '@rootnative/inertia'
 import { router } from 'expo-router'
@@ -62,10 +69,7 @@ export default function GalleryScreen() {
   }
 
   return (
-    <Layout
-      edges={['top']}
-      style={{ backgroundColor: theme.colors.surface, ...PAGE_FILL }}
-    >
+    <Layout edges={['top']} style={PAGE_FILL}>
       <PageScroll
         scroll={scroll}
         contentStyle={contentStyle}
@@ -82,7 +86,17 @@ export default function GalleryScreen() {
             containerColor="transparent"
             // `trailing` rather than `actions`: the toggle renders two stacked
             // faces, where `actions` builds only icon and text buttons.
-            trailing={<LampToggle />}
+            trailing={
+              <Row gap="xs" align="center">
+                <IconButton
+                  icon="map-outline"
+                  variant="outlined"
+                  accessibilityLabel="Open the index to sheets"
+                  onPress={() => router.push('/map')}
+                />
+                <LampToggle />
+              </Row>
+            }
           />
         }
       >

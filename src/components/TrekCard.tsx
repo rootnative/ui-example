@@ -1,4 +1,11 @@
-import { Card, Column, Row, Skeleton, Typography } from '@rootnative/components'
+import {
+  Card,
+  Chip,
+  Column,
+  Row,
+  Skeleton,
+  Typography,
+} from '@rootnative/components'
 import { useTheme } from '@rootnative/core'
 import { Motion } from '@rootnative/inertia'
 import type { EnrichedTrek } from '../data/types'
@@ -165,35 +172,24 @@ export function TrekCard({ trek, loading, onPress }: TrekCardProps) {
 }
 
 /**
- * A static metadata pill, cut to the assist-chip metrics.
- *
- * Not a `Chip`: a `Chip` is a `Pressable`, so react-native-web renders it as a
- * `<button>` inside the plate's own button, which is a hydration error and
- * drops the pair out of the tab order.
- *
- * The height and the padding are the chip's own numbers rather than spacing
- * tokens, because this theme cuts its scale tighter than Material — `px="md"`
- * is 10 here. The outline and the corner stay theme tokens.
+ * A static metadata pill. It must not take an `onPress`: a `Chip` with no
+ * action is a label, but with one it is a `<button>` inside the plate's own
+ * button on the web, which is a hydration error.
  */
 function Tag({ children }: { children: string }) {
   const theme = useTheme()
 
   return (
-    <Row
-      align="center"
-      style={{
-        height: 32,
-        paddingHorizontal: 16,
-        borderWidth: 1,
-        borderColor: theme.colors.outline,
-        borderRadius: theme.shape.cornerSmall,
-        // Without a veil a contour line crosses the label, which reads as a
-        // printing slip rather than as a pill lying on a sheet.
-        backgroundColor: withAlpha(theme.colors.surface, SURFACE_ALPHA),
-      }}
+    <Chip
+      // Without a veil a contour line crosses the label, which reads as a
+      // printing slip rather than as a pill lying on a sheet.
+      containerColor={withAlpha(theme.colors.surface, SURFACE_ALPHA)}
+      // `containerColor` also sets the border, so the veil erases the
+      // outline. State it back.
+      style={{ borderColor: theme.colors.outline }}
     >
-      <Typography variant="labelLarge">{children}</Typography>
-    </Row>
+      {children}
+    </Chip>
   )
 }
 

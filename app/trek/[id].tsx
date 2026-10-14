@@ -19,7 +19,7 @@ import {
   useSheetHeaderSurface,
 } from '../../src/components/sheetLayout'
 import { PHOTO_HEIGHT } from '../../src/components/TrekCard'
-import { elevationGain, gradient } from '../../src/data/types'
+import { elevationGain, gradient, position } from '../../src/data/types'
 import { useTrek } from '../../src/data/useTreks'
 import { plate } from '../../src/theme/motion'
 
@@ -36,7 +36,7 @@ import { plate } from '../../src/theme/motion'
  */
 export default function TrekDetailScreen() {
   const theme = useTheme()
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, via } = useLocalSearchParams<{ id: string; via?: string }>()
   const { trek, loading } = useTrek(id)
   const contentStyle = useSheetContentStyle(20)
   const headerHeights = useSheetHeaderHeights('small')
@@ -48,10 +48,7 @@ export default function TrekDetailScreen() {
   // network. Enrichment is still in flight on a cold deep link.
   if (!trek) {
     return (
-      <Layout
-        edges={['top']}
-        style={{ backgroundColor: theme.colors.surface, ...PAGE_FILL }}
-      >
+      <Layout edges={['top']} style={PAGE_FILL}>
         <PageScroll
           scroll={scroll}
           contentStyle={contentStyle}
@@ -78,13 +75,23 @@ export default function TrekDetailScreen() {
   }
 
   const photo = trek.enrichment?.imageUrl
-  const { lat, lon, extract } = trek.enrichment ?? {}
+  const extract = trek.enrichment?.extract
+  const at = position(trek)
+
+  // From the index map, the gallery is still mounted under the map on native,
+  // so its plate is a live FLIP source. The photo would fly out from a card
+  // the reader cannot see. It fades in place instead.
+  const heroMotion =
+    via === 'map'
+      ? ({
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          transition: 'fold',
+        } as const)
+      : ({ layoutId: `trek-photo-${trek.id}`, transition: 'hero' } as const)
 
   return (
-    <Layout
-      edges={['top', 'bottom']}
-      style={{ backgroundColor: theme.colors.surface, ...PAGE_FILL }}
-    >
+    <Layout edges={['top', 'bottom']} style={PAGE_FILL}>
       <PageScroll
         scroll={scroll}
         contentStyle={contentStyle}
@@ -106,10 +113,9 @@ export default function TrekDetailScreen() {
         */}
         {photo ? (
           <Motion.Image
-            layoutId={`trek-photo-${trek.id}`}
+            {...heroMotion}
             source={{ uri: photo }}
             resizeMode="cover"
-            transition="hero"
             style={{
               width: '100%',
               height: PHOTO_HEIGHT,
@@ -161,10 +167,10 @@ export default function TrekDetailScreen() {
                 <Field label="SEASON" value={trek.season.join(', ')} />
               </Row>
 
-              {lat !== undefined && lon !== undefined ? (
+              {at ? (
                 <Field
                   label="GRID REFERENCE"
-                  value={`${lat.toFixed(4)}° N  ${lon.toFixed(4)}° E`}
+                  value={`${at.lat.toFixed(4)}° N  ${at.lon.toFixed(4)}° E`}
                 />
               ) : null}
             </Column>
